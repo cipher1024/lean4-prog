@@ -140,6 +140,8 @@ def comp : {n : Nat} → {v₀ v₁ v₂ : TypeVec n} →
 | succ n, _, _, _, TypeMap.cons f fs, TypeMap.cons g gs =>
   TypeMap.cons (f ∘ g) (comp fs gs)
 
+section Notations
+
 local infixr:20 " ⟶ " => TypeMap
 local infixr:60 " ⊚ " => TypeMap.comp
 local notation "𝟙" => TypeMap.id
@@ -206,6 +208,21 @@ theorem comp_assoc : ∀ {n : Nat} {v₀ v₁ v₂ v₃ : TypeVec n}
 | succ n, _, _, _, _, TypeMap.cons f fs, TypeMap.cons g gs, TypeMap.cons h hs => by
   simp [TypeMap.comp, @comp_assoc n]
 
+end Notations
+
+open category_theory
+
+instance {n} : Category (TypeVec.{u} n) where
+  hom := TypeMap
+  id := TypeMap.id
+  comp := TypeMap.comp
+  id_comp := TypeMap.id_comp
+  comp_id := TypeMap.comp_id
+  assoc := TypeMap.comp_assoc
+
+instance {n} : Category (Vec.{u+1} (Type u) n) :=
+inferInstanceAs (Category (TypeVec n))
+
 theorem comp_reassoc {n : Nat} {v₀ v₁ v₂ v₃ : TypeVec n}
   (f : v₀ ⟶ v₁) (g g' : v₁ ⟶ v₂) : g = g' → g ⊚ f = g' ⊚ f :=
 by intros h; subst h; refl
@@ -220,7 +237,7 @@ match n, v₀, v₁, F with
 
 @[simp]
 protected def map_id {v₀ : Vec α n} (f : α → Type u) :
-   TypeMap.map (v₀ := v₀) f f (λ i => id) = 𝟙 := by
+   TypeMap.map (v₀ := v₀) f f (λ i => 𝟙_ (f (Vec.apply v₀ i))) = 𝟙 := by
 induction v₀ with
 | nil => simp [TypeMap.map]; refl
 | cons x xs ih => simp [TypeMap.map, ih]; refl
@@ -230,36 +247,34 @@ protected def map_comp {v₀ v₁ v₂ : Vec _ n}
   (f₀ : α₀ → Type u)
   (f₁ : α₁ → Type u)
   (f₂ : α₂ → Type u)
-  (F₀ : ∀ i, f₀ (v₀.apply i) → f₁ (v₁.apply i))
-  (F₁ : ∀ i, f₁ (v₁.apply i) → f₂ (v₂.apply i)) :
+  (F₀ : ∀ i, f₀ (v₀.apply i) ⟶ f₁ (v₁.apply i))
+  (F₁ : ∀ i, f₁ (v₁.apply i) ⟶ f₂ (v₂.apply i)) :
    TypeMap.map _ _ F₁ ⊚ TypeMap.map _ _ F₀ =
-   TypeMap.map _ _ λ i => F₁ i ∘ F₀ i := by
-induction v₀ with
-| nil =>
-  cases v₁; cases v₂; simp [TypeMap.map]; refl
-| cons x xs ih =>
-  cases v₁; cases v₂; simp [TypeMap.map, ih, comp]
-
--- open category_theory (Category)
-
-instance {n} : category_theory.Category (TypeVec n) where
-  hom := TypeMap
-  id := TypeMap.id
-  comp := TypeMap.comp
-  id_comp := TypeMap.id_comp
-  comp_id := TypeMap.comp_id
-  assoc := TypeMap.comp_assoc
+   TypeMap.map _ _ λ i => F₁ i ⊚ F₀ i := by
+simp [(·⊚·)]
+induction v₀
+all_goals { cases v₁; cases v₂; simp [TypeMap.map, *, comp] }
 
 end TypeMap
 open category_theory
 
-class NFunctor {n} (F : TypeVec n → Type u) where
-  map : {a b : TypeVec n} → (a ⟶ b) → F a → F b
-  map_id : ∀ {a : TypeVec n}, map (@TypeMap.id _ a) = id
-  map_comp : ∀ {a b c : TypeVec n} (f : a ⟶ b) (g : b ⟶ c),
-    (map g ∘ map f) = map (g ⊚ f)
+-- class NFunctor {n} (F : TypeVec n → Type u) where
+--   map : {a b : TypeVec n} → (a ⟶ b) → F a → F b
+--   map_id : ∀ {a : TypeVec n}, map (𝟙_ a) = id
+--   map_comp : ∀ {a b c : TypeVec n} (f : a ⟶ b) (g : b ⟶ c),
+--     (map g ∘ map f) = map (g ⊚ f)
 
-attribute [simp] NFunctor.map_id NFunctor.map_comp
+-- attribute [simp] NFunctor.map_id NFunctor.map_comp
+
+-- class NFunctor {n} (F : TypeVec n → Type u) where
+--   map : {a b : TypeVec n} → (a ⟶ b) → F a → F b
+--   map_id : ∀ {a : TypeVec n}, map (𝟙_ a) = id
+--   map_comp : ∀ {a b c : TypeVec n} (f : a ⟶ b) (g : b ⟶ c),
+--     (map g ∘ map f) = map (g ⊚ f)
+
+-- attribute [simp] NFunctor.map_id NFunctor.map_comp
+open category_theory
+open category_theory.IsFunctor
 
 namespace NFunctor
 
@@ -267,23 +282,26 @@ def set {n} (F : TypeVec (succ n) → Type u) (v : Type _) (vs : TypeVec n) : Ty
 F $ TypeVec.cons v vs
 
 namespace set
-variable (F : TypeVec (succ n) → Type u) [NFunctor F]
+variable (F : TypeVec (succ n) → Type u) [IsFunctor F]
 
-protected def map v (f : a ⟶ b) : set F v a → set F v b :=
-show F (TypeVec.cons v a) → F (TypeVec.cons v b) from
-map $ TypeMap.cons id f
+protected def map v (f : a ⟶ b) : set F v a ⟶ set F v b :=
+show F (TypeVec.cons v a) ⟶ F (TypeVec.cons v b) from
+let g : TypeVec.cons v a ⟶ TypeVec.cons v b :=
+        TypeMap.cons _root_.id f
+map (F := F) g
 
 protected theorem map_id :
   set.map F v 𝟙 = @id (set F v a) :=
 map_id
-set_option pp.notation false
+
 protected theorem map_comp {a b c : TypeVec n} (f : a ⟶ b) (g : b ⟶ c) :
-  set.map F v g ∘ set.map F v f = set.map F v (g ⊚ f) :=
-by simp [set.map, NFunctor.map_comp, (·⊚·), TypeMap.comp]
+  set.map F v g ⊚ set.map F v f = set.map F v (g ⊚ f) :=
+by simp [set.map]; simp [(·⊚·), TypeMap.comp]
 
 end set
 
-instance (F : TypeVec (succ n) → Type u) [NFunctor F] : NFunctor (set F v) where
+instance (F : TypeVec (succ n) → Type u) [IsFunctor F] :
+         IsFunctor (set F v) where
   map := set.map F v
   map_id := set.map_id F
   map_comp := set.map_comp F
@@ -307,29 +325,31 @@ namespace comp
 
 protected def map {n m}
   (Gs : Vec (TypeVec.{u₂} m → Type u₁) n)
-  [∀ i, NFunctor $ Gs.apply i]
-  (F : TypeVec.{u₁} n → Type u₀) [NFunctor F]
+  [∀ i, IsFunctor $ Gs.apply i]
+  (F : TypeVec.{u₁} n → Type u₀) [IsFunctor F]
   {v₀ v₁ : TypeVec m} (f : v₀ ⟶ v₁) :
-  comp Gs F v₀ → comp Gs F v₁ :=
-show F _ → F _ from
+  comp Gs F v₀ ⟶ comp Gs F v₁ :=
+show F _ ⟶ F _ from
 map (TypeMap.map _ _ $ λ i =>
-  show Gs.apply i v₀ → Gs.apply i v₁ from
+  show Gs.apply i v₀ ⟶ Gs.apply i v₁ from
   map f)
 
 variable
   (Gs : Vec (TypeVec.{u₂} m → Type u₁) n)
-  [∀ i, NFunctor $ Gs.apply i]
-  (F : TypeVec.{u₁} n → Type u₀) [NFunctor F]
+  [∀ i, IsFunctor $ Gs.apply i]
+  (F : TypeVec.{u₁} n → Type u₀) [IsFunctor F]
 
 protected theorem map_id {v₀ : TypeVec m} :
   comp.map Gs F 𝟙 = @id (comp Gs F v₀) := by
-simp [comp.map]
+simp [comp.map]; refl
 
 protected theorem map_comp {v₀ : TypeVec m} (f : v₀ ⟶ v₁) (g : v₁ ⟶ v₂) :
-  comp.map Gs F g ∘ comp.map Gs F f = comp.map Gs F (g ⊚ f) := by
+  comp.map Gs F g ⊚ comp.map Gs F f = comp.map Gs F (g ⊚ f) := by
 simp [comp.map]
+rewrite [TypeMap.map_comp]
+simp
 
-instance : @NFunctor m (comp Gs F) where
+instance : IsFunctor (comp Gs F) where
   map := comp.map Gs F
   map_id := comp.map_id Gs F
   map_comp := comp.map_comp Gs F
@@ -400,180 +420,203 @@ protected def map_comp {a b c : TypeVec n} (f : a ⟶ b) (g : b ⟶ c) :
   intros x; cases x using apply.casesOn
   simp [PFunctor.map]; refl
 
-instance : NFunctor P.apply where
+instance : IsFunctor P.apply where
   map := PFunctor.map P
   map_id := PFunctor.map_id P
   map_comp := PFunctor.map_comp P
 
 instance instNFunctorApplyApply {m} (v : Vec (PFunctor n) m) i :
-  NFunctor ((v.map PFunctor.apply).apply i) :=
+  IsFunctor ((v.map PFunctor.apply).apply i) :=
 match m, v, i with
-| _, Vec.cons x xs, Fin'.ZFin => instNFunctor _
+| _, Vec.cons x xs, Fin'.ZFin => instIsFunctor _
 | _, Vec.cons x xs, Fin'.SFin i => instNFunctorApplyApply xs i
 
 end PFunctor
 
 open NFunctor
-structure NatTrans (F : TypeVec n → Type u)
-          (G : TypeVec n → Type v)
-          [NFunctor F] [NFunctor G] where
-  trans v : F v → G v
-  naturality {v₀ v₁} (f : v₀ ⟶ v₁) :
-    map f ∘ trans v₀ = trans v₁ ∘ map f
+-- structure NatTrans (F : TypeVec n → Type u)
+--           (G : TypeVec n → Type v)
+--           [IsFunctor F] [IsFunctor G] where
+--   trans v : F v → G v
+--   naturality {v₀ v₁} (f : v₀ ⟶ v₁) :
+--     map f ∘ trans v₀ = trans v₁ ∘ map f
 
-infix:40 " ⟹ " => NatTrans
+-- infix:40 " ⟹ " => NatTrans
 
-attribute [simp] NatTrans.naturality
+-- attribute [simp] NatTrans.naturality
 
-namespace NatTrans
+-- namespace NatTrans
 
-variable {F₀ F₁ F₂ F₃ : TypeVec n → _}
-variable [NFunctor F₀] [NFunctor F₁] [NFunctor F₂] [NFunctor F₃]
+-- variable {F₀ F₁ F₂ F₃ : TypeVec n → _}
+-- variable [NFunctor F₀] [NFunctor F₁] [NFunctor F₂] [NFunctor F₃]
 
-@[simp]
-theorem naturality_reassoc (f : F₀ ⟹ F₁) {α}
-        {v₀ v₁} (h : v₀ ⟶ v₁) (g : α → F₀ v₀) :
-  map h ∘ f.trans v₀ ∘ g = f.trans v₁ ∘ map h ∘ g := by
-rw [← Function.comp_assoc, naturality, Function.comp_assoc]
+-- @[simp]
+-- theorem naturality_reassoc (f : F₀ ⟹ F₁) {α}
+--         {v₀ v₁} (h : v₀ ⟶ v₁) (g : α → F₀ v₀) :
+--   map h ∘ f.trans v₀ ∘ g = f.trans v₁ ∘ map h ∘ g := by
+-- rw [← Function.comp_assoc, naturality, Function.comp_assoc]
 
-protected def id : F₀ ⟹ F₀ where
-  trans v := id
-  naturality := by
-    intros v₀ v₁ f
-    apply funext; intros; refl
+-- protected def id : F₀ ⟹ F₀ where
+--   trans v := id
+--   naturality := by
+--     intros v₀ v₁ f
+--     apply funext; intros; refl
 
-protected def comp (g : F₁ ⟹ F₂) (f : F₀ ⟹ F₁) : F₀ ⟹ F₂ where
-  trans v := g.trans v ∘ f.trans v
-  naturality := by intros; simp
+-- protected def comp (g : F₁ ⟹ F₂) (f : F₀ ⟹ F₁) : F₀ ⟹ F₂ where
+--   trans v := g.trans v ∘ f.trans v
+--   naturality := by intros; simp
 
-infixr:60 " ⊗ " => NatTrans.comp
+-- infixr:60 " ⊗ " => NatTrans.comp
 
-variable (f f' : F₀ ⟹ F₁) (g : F₁ ⟹ F₂) (h : F₂ ⟹ F₃)
+-- variable (f f' : F₀ ⟹ F₁) (g : F₁ ⟹ F₂) (h : F₂ ⟹ F₃)
 
-protected theorem ext
-          (h : ∀ x, f.trans x = f'.trans x) :
-  f = f' := by
-cases f; cases f'
-simp; apply funext
-apply h
+-- protected theorem ext
+--           (h : ∀ x, f.trans x = f'.trans x) :
+--   f = f' := by
+-- cases f; cases f'
+-- simp; apply funext
+-- apply h
 
-@[simp]
-theorem id_comp : (NatTrans.id ⊗ f) = f := by
-apply NatTrans.ext; intros; refl
+-- @[simp]
+-- theorem id_comp : (NatTrans.id ⊗ f) = f := by
+-- apply NatTrans.ext; intros; refl
 
-@[simp]
-theorem comp_id : (f ⊗ NatTrans.id) = f := by
-apply NatTrans.ext; intros; refl
+-- @[simp]
+-- theorem comp_id : (f ⊗ NatTrans.id) = f := by
+-- apply NatTrans.ext; intros; refl
 
-@[simp]
-theorem comp_assoc : (h ⊗ g) ⊗ f = h ⊗ (g ⊗ f) := by
-apply NatTrans.ext; intros; refl
+-- @[simp]
+-- theorem comp_assoc : (h ⊗ g) ⊗ f = h ⊗ (g ⊗ f) := by
+-- apply NatTrans.ext; intros; refl
 
-end NatTrans
+-- end NatTrans
 
-structure Equiv (F G : TypeVec n → Type _)
-          [NFunctor F] [NFunctor G] where
-  to : F ⟹ G
-  inv : G ⟹ F
-  to_inv : to ⊗ inv = NatTrans.id
-  inv_to : inv ⊗ to = NatTrans.id
+-- structure Equiv (F G : TypeVec n → Type _)
+--           [NFunctor F] [NFunctor G] where
+--   to : F ⟹ G
+--   inv : G ⟹ F
+--   to_inv : to ⊗ inv = NatTrans.id
+--   inv_to : inv ⊗ to = NatTrans.id
 
-namespace Equiv
+-- namespace Equiv
 
+-- variable
+--   {F G H J : TypeVec n → Type _}
+--   [NFunctor F] [NFunctor G] [NFunctor H] [NFunctor J]
+
+-- attribute [simp] Equiv.to_inv Equiv.inv_to
+
+-- @[simp]
+-- theorem to_inv_reassoc (f : Equiv F G) (g : H ⟹ G) :
+--   f.to ⊗ f.inv ⊗ g = g :=
+-- by rw [← NatTrans.comp_assoc, to_inv, NatTrans.id_comp]
+
+-- @[simp]
+-- theorem inv_to_reassoc (f : Equiv F G) (g : H ⟹ F) :
+--   f.inv ⊗ f.to ⊗ g = g :=
+-- by rw [← NatTrans.comp_assoc, inv_to, NatTrans.id_comp]
+
+-- protected def id : Equiv F F where
+--   to := NatTrans.id
+--   inv := NatTrans.id
+--   to_inv := by simp
+--   inv_to := by simp
+
+-- @[simp] protected theorem to_id : (@Equiv.id _ F _).to = NatTrans.id := rfl
+-- @[simp] protected theorem inv_id : (@Equiv.id _ F _).inv = NatTrans.id := rfl
+
+-- protected def comp (f : Equiv G H) (g : Equiv F G) :
+--           Equiv F H where
+--   to := f.to ⊗ g.to
+--   inv := g.inv ⊗ f.inv
+--   to_inv := by simp
+--   inv_to := by simp
+
+-- @[simp] protected theorem to_comp (f : Equiv G H) (g : Equiv F G) :
+--   (f.comp g).to = f.to.comp g.to := rfl
+
+-- @[simp] protected theorem inv_comp (f : Equiv G H) (g : Equiv F G) :
+--   (f.comp g).inv = g.inv.comp f.inv := rfl
+
+-- protected def symm (f : Equiv F G) : Equiv G F where
+--   to := f.inv
+--   inv := f.to
+--   to_inv := f.inv_to
+--   inv_to := f.to_inv
+
+-- @[simp] protected theorem to_symm (f : Equiv F G) :
+--   f.symm.to = f.inv := rfl
+
+-- @[simp] protected theorem inv_symm (f : Equiv F G) :
+--   f.symm.inv = f.to := rfl
+
+-- protected theorem ext {f g : Equiv F G} :
+--   f.to = g.to → f = g := by
+-- cases f with | mk fto finv fto_inv finv_to =>
+-- cases g with | mk gto ginv gto_inv ginv_to =>
+-- simp; intros h
+-- constructor; assumption
+-- have : _ ⊗ _ = _ ⊗ _ := congrArg (λ x => ginv ⊗ x) fto_inv
+-- rw [h, ← NatTrans.comp_assoc, ginv_to] at this
+-- simp at this; assumption
+
+-- @[simp]
+-- theorem id_comp (f : Equiv F G) : Equiv.id.comp f = f :=
+-- Equiv.ext $ by simp
+
+-- @[simp]
+-- theorem comp_id (f : Equiv F G) : f.comp Equiv.id = f :=
+-- Equiv.ext $ by simp
+
+-- @[simp]
+-- theorem comp_assoc (f : Equiv F G) (g : Equiv G H) (h : Equiv H J) :
+--   (h.comp g).comp f = h.comp (g.comp f) :=
+-- Equiv.ext $ by simp
+
+-- @[simp]
+-- theorem symm_id : (@Equiv.id _ F _).symm = Equiv.id :=
+-- Equiv.ext $ by simp
+
+-- @[simp]
+-- theorem symm_comp (f : Equiv F G) (g : Equiv G H) :
+--   (g.comp f).symm = f.symm.comp g.symm :=
+-- Equiv.ext $ by simp
+
+-- @[simp]
+-- theorem symm_symm (f : Equiv F G) :
+--   f.symm.symm = f :=
+-- Equiv.ext $ by simp
+
+-- end Equiv
+
+structure RelationF (F : TypeVec n → Type _) where
+  get {v : TypeVec n} : F v → F v → Prop
+
+structure RelationF.apply {F : TypeVec n → Type _} (R : RelationF F) {X v} (x y : X ⟶ F v) : Prop where
+  get : ∀ i, R.get (x i) (y i)
+
+instance {F : TypeVec n → Type _} : CoeFun (RelationF F) (λ _ => ∀ {X v} (x y : X ⟶ F v), Prop) where
+  coe R {X v} f g := RelationF.apply R f g
+
+class FunctorialRel (F : TypeVec n → Type _) [IsFunctor F] (R : RelationF F) where
+  map {v₀ v₁} {X} (x y : X ⟶ F v₀) (f : v₀ ⟶ v₁) :
+    R x y → R (map (F := F) f ⊚ x) (map (F := F) f ⊚ y)
+
+namespace FunctorialRel
+open IsFunctor
 variable
-  {F G H J : TypeVec n → Type _}
-  [NFunctor F] [NFunctor G] [NFunctor H] [NFunctor J]
+  {F : TypeVec n → Type _} [IsFunctor F]
+  (R : RelationF F) [FunctorialRel F R]
 
-attribute [simp] Equiv.to_inv Equiv.inv_to
+def map' {v₀ v₁} (x y : F v₀) (f : v₀ ⟶ v₁) :
+    R.get x y →
+    R.apply (IsFunctor.map f x) (IsFunctor.map f y) := by
+intros H i
+apply map; apply H
 
-@[simp]
-theorem to_inv_reassoc (f : Equiv F G) (g : H ⟹ G) :
-  f.to ⊗ f.inv ⊗ g = g :=
-by rw [← NatTrans.comp_assoc, to_inv, NatTrans.id_comp]
+end FunctorialRel
 
-@[simp]
-theorem inv_to_reassoc (f : Equiv F G) (g : H ⟹ F) :
-  f.inv ⊗ f.to ⊗ g = g :=
-by rw [← NatTrans.comp_assoc, inv_to, NatTrans.id_comp]
 
-protected def id : Equiv F F where
-  to := NatTrans.id
-  inv := NatTrans.id
-  to_inv := by simp
-  inv_to := by simp
-
-@[simp] protected theorem to_id : (@Equiv.id _ F _).to = NatTrans.id := rfl
-@[simp] protected theorem inv_id : (@Equiv.id _ F _).inv = NatTrans.id := rfl
-
-protected def comp (f : Equiv G H) (g : Equiv F G) :
-          Equiv F H where
-  to := f.to ⊗ g.to
-  inv := g.inv ⊗ f.inv
-  to_inv := by simp
-  inv_to := by simp
-
-@[simp] protected theorem to_comp (f : Equiv G H) (g : Equiv F G) :
-  (f.comp g).to = f.to.comp g.to := rfl
-
-@[simp] protected theorem inv_comp (f : Equiv G H) (g : Equiv F G) :
-  (f.comp g).inv = g.inv.comp f.inv := rfl
-
-protected def symm (f : Equiv F G) : Equiv G F where
-  to := f.inv
-  inv := f.to
-  to_inv := f.inv_to
-  inv_to := f.to_inv
-
-@[simp] protected theorem to_symm (f : Equiv F G) :
-  f.symm.to = f.inv := rfl
-
-@[simp] protected theorem inv_symm (f : Equiv F G) :
-  f.symm.inv = f.to := rfl
-
-protected theorem ext {f g : Equiv F G} :
-  f.to = g.to → f = g := by
-cases f with | mk fto finv fto_inv finv_to =>
-cases g with | mk gto ginv gto_inv ginv_to =>
-simp; intros h
-constructor; assumption
-have : _ ⊗ _ = _ ⊗ _ := congrArg (λ x => ginv ⊗ x) fto_inv
-rw [h, ← NatTrans.comp_assoc, ginv_to] at this
-simp at this; assumption
-
-@[simp]
-theorem id_comp (f : Equiv F G) : Equiv.id.comp f = f :=
-Equiv.ext $ by simp
-
-@[simp]
-theorem comp_id (f : Equiv F G) : f.comp Equiv.id = f :=
-Equiv.ext $ by simp
-
-@[simp]
-theorem comp_assoc (f : Equiv F G) (g : Equiv G H) (h : Equiv H J) :
-  (h.comp g).comp f = h.comp (g.comp f) :=
-Equiv.ext $ by simp
-
-@[simp]
-theorem symm_id : (@Equiv.id _ F _).symm = Equiv.id :=
-Equiv.ext $ by simp
-
-@[simp]
-theorem symm_comp (f : Equiv F G) (g : Equiv G H) :
-  (g.comp f).symm = f.symm.comp g.symm :=
-Equiv.ext $ by simp
-
-@[simp]
-theorem symm_symm (f : Equiv F G) :
-  f.symm.symm = f :=
-Equiv.ext $ by simp
-
-end Equiv
-
-def RelationF (F : TypeVec n → Type _) := {v : TypeVec n} → F v → F v → Prop
-
-class FunctorialRel (F : TypeVec n → Type _) [NFunctor F] (R : RelationF F) where
-  map {v₀ v₁} (x y : F v₀) (f : v₀ ⟶ v₁) :
-    R x y → R (map f x) (map f y)
 
 def QuotF (F : TypeVec n → Type _)
           (R : RelationF F)
@@ -582,11 +625,19 @@ Quot (@R v)
 
 namespace QuotF
 
-variable (F : TypeVec n → Type _) [NFunctor F]
+variable {F : TypeVec n → Type _} [IsFunctor F]
          (R : RelationF F) [FunctorialRel F R]
 
+protected def mk {a b : TypeVec n} (f : a ⟶ b) : F a ⟶ QuotF F R b :=
+Quot.mk _ ⊚ map f
+
+protected def lift {a b : TypeVec n} (f : a ⟶ b)
+              (Hf : ∀ {X} (g₀ g₁ : X ⟶ F a), ) :
+  QuotF F R a ⟶ F b :=
+Quot.lift (map f : F a ⟶ F b) _
+
 protected def map (f : a ⟶ b) : QuotF F R a → QuotF F R b :=
-Quot.lift (Quot.mk _ ∘ map f) $ by
+Quot.lift (Quot.mk (FunctorialRel) ⊚ map f : _ → _) $ by
   intros x y Hxy
   have Hxy := FunctorialRel.map _ _ f Hxy
   simp [QuotF, Quot.eq]
