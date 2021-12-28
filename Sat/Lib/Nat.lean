@@ -279,8 +279,9 @@ rw [min_comm]; apply min_le_l
   constructor <;> intros h
   . rw [← h]; auto
   focus
-    apply Nat.le_antisymm; auto
-    simp; auto
+    apply Nat.le_antisymm
+    . auto
+    . simp; auto
 
 @[simp] theorem min_eq_iff_le_r : min x y = y ↔ y ≤ x := by
   rw [min_comm, min_eq_iff_le_l]; refl

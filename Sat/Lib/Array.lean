@@ -39,12 +39,76 @@ def size_modify [Inhabited α] (f : α → α)
 def size_zipWith (f : α → β → γ) (ar₀ : Array α) (ar₁ : Array β) :
   size (ar₀.zipWith ar₁ f) = min (size ar₀) (size ar₁) := sorry
 
--- #check foldlM.loop._eqns_1
+
+@[simp] theorem bind_pure' [Monad m] [LawfulMonad m] (x : m α) : x >>= (λ a => pure a) = x := by
+  show x >>= (fun a => pure (id a)) = x
+  rw [bind_pure_comp, id_map]
 
 attribute [auto] Nat.zero_le
 
+section foldlM_sim
+variable {m : Type u → Type u'} [Monad m] [LawfulMonad m]
+variable {m' : Type v → Type v'} [Monad m'] [LawfulMonad m']
+variable (f : β → α → m β) (g : γ → α → m' γ)
+variable (x₀ : β) (y₀ : γ) (h : β → γ)
+variable (SIM : m β → m' γ → Prop)
+
+attribute [simp] bind_pure
+
+theorem foldlM_sim (ar : Array α) {x₀ y₀}
+        (H₀ : SIM x₀ y₀)
+        (Hstep : ∀ x x' a, SIM x x' →
+          SIM (x >>= (f . a)) (x' >>= (g . a))) :
+  SIM (x₀ >>= ar.foldlM f) (y₀ >>= ar.foldlM g) := by
+suffices H :
+    ∀ i j, i ≤ j → j ≤ ar.size →
+    SIM (x₀ >>= (ar.foldlM f . i j)) (y₀ >>= (ar.foldlM g . i j))
+  by apply H <;> auto
+intros i j Hij Hj; simp [foldl, foldlM, *]
+generalize j - i = n
+induction n generalizing x₀ y₀ i j;
+focus
+  have := Nat.zero_le (size ar)
+  simp [foldl, foldlM, *, foldlM.loop, Nat.zero_sub]
+  split <;> simp [bind_pure, *]
+next n ih =>
+  simp only [*, foldlM.loop]
+  split
+  focus
+    rw [← bind_assoc, ← bind_assoc]
+    auto
+  focus
+    simp [*]
+
+theorem foldlM_hom (ar : Array α) {x₀ y₀} (h : m β → m' γ)
+        (H' : h x₀ = y₀)
+        (H : ∀ x y, h (x >>= (f . y)) = h x >>= (g . y)) :
+  h (x₀ >>= ar.foldlM f) = y₀ >>= ar.foldlM g := by
+let SIM x y := h x = y
+apply foldlM_sim (SIM := SIM)
+. assumption
+. intros _ _ _ H₂; simp [H, H₂]
+
+theorem foldlM_hom' (ar : Array α) {x₀ y₀} (h : m β → m' γ)
+        (H' : h (pure x₀) = pure y₀)
+        (H : ∀ x y, h (x >>= (f . y)) = h x >>= (g . y)) :
+  h (ar.foldlM f x₀) = ar.foldlM g y₀ := by
+let SIM x y := h x = y
+have := foldlM_hom (H := H) (H' := H')
+simp at this; auto
+
+end foldlM_sim
+
 variable (f : β → α → β) (g : γ → α → γ)
-variable (x₀ : β) (h : β → γ)
+variable (x₀ : β) (y₀ : γ) (h : β → γ)
+variable (SIM : β → γ → Prop)
+
+theorem foldl_sim (ar : Array α)
+        (H' : SIM x₀ y₀)
+        (H : ∀ x x' a, SIM x x' →  SIM (f x a) (g x' a)) :
+  SIM (ar.foldl f x₀) (ar.foldl g y₀) := by
+apply foldlM_sim (m := Id) (m' := Id) (SIM := SIM)
+<;> assumption
 
 theorem foldl_hom (ar : Array α)
         (H' : h x₀ = y₀)
@@ -67,6 +131,18 @@ next n ih =>
   split
   . rw [← H, ← ih] <;> assumption
   . refl
+
+def mapA {F} [Applicative F] (f : α → F β) (ar : Array α) : F (Array β) :=
+ar.foldl (λ acc x => Array.push <$> acc <*> f x) (pure $ Array.mkEmpty ar.size)
+
+theorem mapA_eq_mapM {m} [Monad m] [LawfulMonad m] (f : α → m β) (ar : Array α) :
+  ar.mapA f = ar.mapM f := by
+simp only [mapA, mapM, foldl]
+apply Array.foldlM_hom' (m := Id) (m' := m) (h := Id.run)
+. refl
+focus
+  intros; simp [seq_eq_bind_map, map_eq_pure_bind]
+  refl
 
 end Array
 

@@ -13,12 +13,19 @@ structure FoldImpl (α β : Type u) where
 
 namespace FoldImpl
 
+-- inductive R : FoldImpl α β → FoldImpl α β → Prop
+-- | intro {γ γ' x₀ y₀ f g out out'} :
+--   (Heq : Equiv γ γ') →
+--   Heq.to x₀ = y₀ →
+--   (∀ x y, g (Heq.to x) y = Heq.to (f x y)) →
+--   (∀ x, out x = out' (Heq.to x)) →
+--   R ⟨γ, x₀, f, out⟩ ⟨γ', y₀, g, out'⟩
+
 inductive R : FoldImpl α β → FoldImpl α β → Prop
-| intro {γ γ' x₀ y₀ f g out out'} :
-  (Heq : Equiv γ γ') →
-  Heq.to x₀ = y₀ →
-  (∀ x y, g (Heq.to x) y = Heq.to (f x y)) →
-  (∀ x, out x = out' (Heq.to x)) →
+| intro {γ γ' x₀ y₀ f g out out'} (SIM : γ → γ' → Prop) :
+  SIM x₀ y₀ →
+  (∀ x x' y, SIM x x' → SIM (f x y) (g x' y)) →
+  (∀ x x', SIM x x' → out x = out' x') →
   R ⟨γ, x₀, f, out⟩ ⟨γ', y₀, g, out'⟩
 
 namespace R
@@ -27,41 +34,70 @@ variable {x y z : FoldImpl α β}
 
 theorem refl : R x x := by
 cases x
-refine' ⟨Equiv.id, _, _, _⟩
+refine' ⟨(.=.), _, _, _⟩
 <;> intros
-<;> simp
+<;> substAll <;> refl
 
 instance : Reflexive (@R α β) := ⟨ @refl _ _ ⟩
 
 local infixr:60 " ⊚ " => Equiv.comp
 
+def rel.comp {α β γ} (r : α → β → Prop) (s : β → γ → Prop) x y := ∃ z, r x z ∧ s z y
+def rel.flip {α β} (r : α → β → Prop) x y := r y x
+
+local infixr:60 " ∘' " => rel.comp
+
 theorem trans (Hxy : R x y) (Hyz : R y z) : R x z := by
-cases Hxy with | intro Heq a b =>
-cases Hyz with | intro Heq' a' b' =>
-refine' ⟨(Heq' ⊚ Heq), _, _, _⟩
-<;> intros
-<;> simp [*]
+cases Hxy with | intro Heq hxy₀ hxy₁ hxy₂ =>
+next out₀ out₂ =>
+cases Hyz with | intro Heq' hyz₀ hyz₁ hyz₂ =>
+next out₁ =>
+refine' ⟨(Heq ∘' Heq'), _, _, _⟩
+. constructor <;> auto
+focus
+  intros; next a =>
+  cases a; next a b =>
+  cases b; next b₀ b₁ =>
+  constructor; constructor
+  . apply hxy₁; assumption
+  . apply hyz₁; assumption
+focus
+  intros; next a =>
+  cases a; next a b =>
+  cases b; next b₀ b₁ =>
+  trans (out₂ a);
+  . apply hxy₂; assumption
+  . apply hyz₂; assumption
 
 theorem symm (Hxy : R x y) : R y x := by
 cases Hxy with | intro Heq a b c =>
--- have a := Eq.symm a
-refine' ⟨Heq.symm, _, _, _⟩
+next out₀ out₁ =>
+refine' ⟨rel.flip Heq, _, _, _⟩
 <;> intros
 <;> simp [*]
-. rw [← a]; simp
-. simp [Equiv.eq_inv_iff, ← b]
+. assumption
+. apply b; assumption
+. rw [c]; assumption
 
 end R
-
--- def run : (f : FoldImpl α β) → (ar : Array α) → β
--- | ⟨γ, x₀, f, out⟩, ar => out <| ar.foldl f x₀
-
 
 def run {F} [Foldable F] : (f : FoldImpl α β) → (ar : F α) → β
 | ⟨γ, x₀, f, out⟩, ar => out <| Foldable.foldl f x₀ ar
 
 instance : Functor (FoldImpl α) where
   map f x := { x with out := f ∘ x.out }
+
+@[simp]
+theorem x₀_map {α β γ} (x : FoldImpl α β) (f : β → γ) :
+  (f <$> x).x₀ = x.x₀ := rfl
+
+@[simp]
+theorem f_map {α β γ} (x : FoldImpl α β) (f : β → γ) :
+  (f <$> x).f = x.f := rfl
+
+@[simp]
+theorem out_map {α β γ} (x : FoldImpl α β) (f : β → γ) :
+  (f <$> x).out = f ∘ x.out := rfl
 
 instance : Applicative (FoldImpl.{u} α) where
   pure x := ⟨ PUnit, ⟨ ⟩, λ x _ => x, λ _ => x ⟩
@@ -73,6 +109,18 @@ instance : Applicative (FoldImpl.{u} α) where
            out := λ ⟨a, b⟩ => f.out a <| x.out b
           }
 
+@[simp]
+theorem x₀_seq {α β γ : Type _} (f : FoldImpl α (β → γ)) (x : FoldImpl α β) :
+  (f <*> x).x₀ = (f.x₀, x.x₀) := rfl
+
+@[simp]
+theorem f_seq {α β γ : Type _} (f : FoldImpl α (β → γ)) (x : FoldImpl α β) :
+  (f <*> x).f = (λ (a, b) i => (f.f a i, x.f b i)) := rfl
+
+@[simp]
+theorem out_seq {α β γ : Type _} (f : FoldImpl α (β → γ)) (x : FoldImpl α β) :
+  (f <*> x).out = (λ (i, j) => f.out i $ x.out j) := rfl
+
 end FoldImpl
 
 def Fold (α β : Type _) := Quot (@FoldImpl.R α β)
@@ -83,28 +131,22 @@ def run {F} [Foldable F] [LawfulFoldable F]
     (f : Fold α β) (ar : F α) : β :=
 Quot.liftOn f (FoldImpl.run . ar) $ by
   intros x y H; cases H; simp [FoldImpl.run]
-  next h₀ H =>
-    rw [H]; apply congrArg
-    apply LawfulFoldable.foldl_hom
-    . auto
-    . intros; rw [h₀]
+  next h₀ h₁ H =>
+    apply H
+    apply LawfulFoldable.foldl_sim <;> auto
 
--- def run (f : Fold α β) (ar : Array α) : β :=
--- Quot.liftOn f (FoldImpl.run . ar) $ by
---   intros x y H; cases H; simp [FoldImpl.run]
---   next h₀ H =>
---     rw [H]; apply congrArg
---     apply Array.foldl_hom
---     . intros; rw [h₀]
---     . auto
+def mk (x₀ : α) (f : α → β → α) : Fold β α :=
+Quot.mk _ $ FoldImpl.mk _ x₀ f id
 
 def map (f : α → β) (x : Fold σ α) : Fold σ β :=
 x.liftOn (Quot.mk _ ∘ Functor.map f) $ by
   intros x y H; cases H; simp [FoldImpl.run]
   apply Quot.sound; simp [(.<$>.)]
   next Heq h₀ H =>
-  refine' ⟨_, Heq, h₀, _⟩
-  intros; simp [Function.comp, H]
+  refine' ⟨_, Heq, _, _⟩
+  . auto
+  simp only [Function.comp]
+  intros; apply congrArg; auto
 
 theorem map_mk' {α β : Type u} (f : α → β) (x : FoldImpl σ α) :
   (map f <| Quot.mk _ x : Fold σ β) = Quot.mk _ (Functor.map f x) := by
@@ -126,15 +168,29 @@ theorem seq_lift {α β : Type u} (f f' : FoldImpl σ (α → β)) (x x' : FoldI
     (hx : FoldImpl.R x x') :
   FoldImpl.R (Seq.seq f fun _ => x) (Seq.seq f' fun _ => x') := by
 match f, f', hf with
-| _, _, FoldImpl.R.intro Heq_f .. =>
+| _, _, FoldImpl.R.intro Heq_f ha₀ ha₁ ha₂ .. =>
   match x, x', hx with
-  | _, _, FoldImpl.R.intro Heq_x .. =>
-    refine' ⟨Equiv.prodCongr Heq_f Heq_x, _, _, _ ⟩
-    <;> intros <;> simp [Seq.seq, *]
+  | _, _, FoldImpl.R.intro Heq_x hb₀ hb₁ hb₂ .. =>
+    let R | (x, y), (x', y') => Heq_f x x' ∧ Heq_x y y'
+    refine' ⟨R, _, _, _⟩
+    . auto
+    focus
+      intros x x' y; cases x; cases x'
+      show  _ ∧ _ → _ ∧ _
+      simp only ; intros h; auto
+    focus
+      intros x x' y; cases x; cases x'; cases y
+      simp [Seq.seq]
+      show _ = _
+      rw [ha₂]; apply congrArg <;> auto
+    focus
+      auto
 
 def seq {α β : Type u} (f : Fold σ (α → β)) (x : Unit → Fold σ α) : Fold σ β := by
 apply Quot.liftOn₂ f (x ()) (λ a b => Quot.mk _ $ Seq.seq a (λ () => b))
-<;> intros <;> apply Quot.sound <;> apply seq_lift <;> auto
+ <;> intros <;> apply Quot.sound
+ <;> apply seq_lift <;> auto
+
 
 def seq_mk_mk' {α β : Type u} (f : FoldImpl σ (α → β)) (x : Unit → FoldImpl σ α) :
   (seq (Quot.mk _ f) (λ a => Quot.mk _ (x a)) : Fold σ β) =
@@ -145,7 +201,6 @@ instance : Applicative (Fold.{u} α) where
   pure := pure
   seq := seq
 
--- @[simp]
 def seq_mk_mk {α β : Type u} (f : FoldImpl σ (α → β)) (x : Unit → FoldImpl σ α) :
   (Seq.seq (Quot.mk _ f) (λ a => Quot.mk _ (x a)) : Fold σ β) =
   Quot.mk _ (Seq.seq f x) := by
@@ -156,14 +211,19 @@ instance : LawfulFunctor (Fold α) where
   comp_map {α β γ} f g := by intros x; cases x using Quot.ind; refl
   map_const := by intros; apply funext; intros; refl
 
+inductive AssocSim : α × (β × γ) → (α × β) × γ → Prop
+| intro {x y z} : AssocSim (x, (y, z)) ((x, y), z)
+
 instance : LawfulApplicative (Fold α) where
   seq_assoc x f g:= by
     cases x using Quot.ind
     cases f using Quot.ind; cases g using Quot.ind;
     apply Quot.sound
-    refine' ⟨Equiv.assoc.symm, _, _, _⟩
-    <;> intros <;> simp [Seq.seq]
-    <;> simp [Seq.seq, (.<$>.), map_mk', seq_mk_mk']
+    simp [Seq.seq]
+    refine' ⟨AssocSim, _, _, _⟩ <;> simp
+    . constructor
+    all_goals intros; next h => cases h <;> simp
+      <;> constructor
   seqLeft_eq x y := by
     cases x using Quot.ind; cases y using Quot.ind;
     simp [SeqLeft.seqLeft]
@@ -174,21 +234,72 @@ instance : LawfulApplicative (Fold α) where
     simp [Seq.seq, (.<$>.), map_mk', seq_mk_mk']
 
   pure_seq x y := by
-    cases y using Quot.ind;
-    simp [Seq.seq, Pure.pure, pure, (.<$>.), map_mk', seq_mk_mk']
-    apply Quot.sound
-    refine' ⟨Equiv.left_unitor, _, _, _⟩
-    <;> intros <;> simp [Seq.seq]
-
-  map_pure x y := by
-    simp [Seq.seq, Pure.pure, pure, (.<$>.), map_mk', seq_mk_mk']; refl
+    cases y using Quot.ind -- with | mk y => cases y
+    apply Quot.sound; simp
+    refine' ⟨ λ (x,y) y' => y = y', _, _, _⟩
+    . simp [Seq.seq, Pure.pure]
+    focus
+      intros x; cases x; simp
+    focus
+      intros; substAll; auto
+    focus
+      intros x; cases x; simp; intros; substAll; refl
+  map_pure x y := by simp [Pure.pure, pure, (.<$>.), map, (. ∘ .)]
 
   seq_pure g x := by
-    cases g using Quot.ind;
-    simp [Seq.seq, Pure.pure, pure, (.<$>.), map_mk', seq_mk_mk']
+    cases g using Quot.ind
     apply Quot.sound
-    refine' ⟨Equiv.right_unitor, _, _, _⟩
-    <;> intros <;> simp [Seq.seq]
+    refine' ⟨ λ (y, _) y' => y = y', _, _, _⟩
+    . simp [Seq.seq, Pure.pure]
+    focus
+      intros x; cases x; simp
+    focus
+      intros; substAll; refl
+    focus
+      intros x; cases x; simp; intros; substAll; refl
 
+attribute [simp] seq_mk_mk
+
+def dup (x : α) : α × α := (x, x)
+
+inductive dup_sim : α → α × α → Prop
+| intros {x} : dup_sim x (x, x)
+
+theorem map_dup (x : Fold α β) : dup <$> x = (., .) <$> x <*> x := by
+cases x using Quot.ind; simp
+apply Quot.sound
+refine' ⟨dup_sim, _, _, _⟩
+focus simp; constructor
+next a =>
+  simp; intros _ _ _ h; cases h
+  cases a; simp [Seq.seq]; constructor
+next a =>
+  simp; intros _ _ h; cases h
+  cases a; simp [Seq.seq]; constructor
+
+inductive hom_sim (h : β → γ) : β → γ → Prop
+| intros x : hom_sim h x (h x)
+
+def mk_hom (h : β → γ) (f : β → α → β) (g : γ → α → γ)
+  (Hhom : ∀ x y, h (f x y) = g (h x) y) :
+  h <$> mk x₀ f = mk (h x₀) g := by
+simp [mk]; apply Quot.sound
+refine' ⟨hom_sim h, _, _, _⟩
+focus simp; constructor
+focus
+  intros _ _ _ h; cases h; rw [← Hhom]
+  constructor
+focus
+  intros _ _ h; cases h; refl
+
+def ofMonoid [Monoid m] (f : α → m) : Fold α m :=
+Fold.mk One.one (λ x y => x * f y)
+
+def ofMonoid_hom [Monoid m][Monoid m'] (h : MonoidHom m m') (f : α → m) :
+  h.fn <$> ofMonoid f = ofMonoid (h.fn ∘ f) := by
+simp [ofMonoid]
+let g a b := a * h (f b)
+rw [mk_hom (g := g), h.fn_id]
+intros; apply h.fn_mul
 
 end Fold

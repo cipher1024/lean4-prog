@@ -5,6 +5,10 @@ import Sat.Quot
 import Sat.Tactics
 import Sat.Advent.IO
 
+
+-- (lean--version)
+-- ("4" "0" "0-nightly-2021-12-05")
+
 def examples :=
 "16,1,2,0,4,2,7,1,2,14"
 
