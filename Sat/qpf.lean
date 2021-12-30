@@ -601,7 +601,7 @@ instance {F : TypeVec n → Type _} : CoeFun (RelationF F) (λ _ => ∀ {X v} (x
 class FunctorialRel (F : TypeVec n → Type _) [IsFunctor F] (R : RelationF F) where
   map {v₀ v₁} {X} (x y : X ⟶ F v₀) (f : v₀ ⟶ v₁) :
     R x y → R (map (F := F) f ⊚ x) (map (F := F) f ⊚ y)
-
+#exit
 namespace FunctorialRel
 open IsFunctor
 variable
@@ -615,7 +615,6 @@ intros H i
 apply map; apply H
 
 end FunctorialRel
-
 
 
 def QuotF (F : TypeVec n → Type _)

@@ -1,6 +1,8 @@
 
 import Sat.Lib.Array
+import Sat.Lib.Profunctor
 import Sat.Lib.Foldable
+import Sat.Lib.Traversable
 import Sat.Lib.Equiv
 import Sat.Tactics
 import Sat.Quot
@@ -10,6 +12,20 @@ structure FoldImpl (α β : Type u) where
   x₀ : γ
   f : γ → α → γ
   out : γ → β
+
+open Profunctor
+
+instance : Profunctor FoldImpl where
+  dimap f g
+    | ⟨ γ, x₀, step, out ⟩ => ⟨ γ, x₀, λ a => step a ∘ f, g ∘ out ⟩
+
+instance : LawfulProfunctor FoldImpl where
+  dimap_id x := by
+    cases x; simp [dimap]
+    repeat constructor
+  dimap_comp f f' g g' x := by
+    cases x; simp [dimap]
+    repeat constructor
 
 namespace FoldImpl
 
@@ -84,6 +100,13 @@ end R
 def run {F} [Foldable F] : (f : FoldImpl α β) → (ar : F α) → β
 | ⟨γ, x₀, f, out⟩, ar => out <| Foldable.foldl f x₀ ar
 
+def scanl {F} [Traversable F] : (f : FoldImpl α β) → (ar : F α) → F β
+| ⟨γ, x₀, f, out⟩, ar => _root_.scanl (λ a y => (out y, f y a)) x₀ ar
+
+def accuml {F} [Traversable F] : (f : FoldImpl α β) → (ar : F α) → F β × β
+| ⟨γ, x₀, f, out⟩, ar =>
+  Prod.map id out $ _root_.accuml (λ a y => (out y, f y a)) x₀ ar
+
 instance : Functor (FoldImpl α) where
   map f x := { x with out := f ∘ x.out }
 
@@ -127,6 +150,30 @@ def Fold (α β : Type _) := Quot (@FoldImpl.R α β)
 
 namespace Fold
 
+variable {α α' β β'} (f : α' → α) (g : β → β')
+
+protected def dimap : Fold α β → Fold α' β' :=
+Quot.lift (Quot.mk _ ∘ dimap f g) $ by
+    intros x y h; simp; apply Quot.sound
+    cases h with | intro SIM h₀ h₁ h₂ =>
+    simp [dimap]
+    refine' ⟨SIM, _, _, _⟩
+    . assumption
+    . intros; simp [(.∘.)]; auto
+    intros; simp [(.∘.)]; congr
+    auto
+
+instance : Profunctor Fold where
+  dimap := Fold.dimap
+
+instance : LawfulProfunctor Fold where
+  dimap_id x := by
+    cases x using Quot.ind; simp [dimap]
+    simp [Fold.dimap, LawfulProfunctor.dimap_id]
+  dimap_comp f f' g g' x := by
+    cases x using Quot.ind; simp [dimap]
+    simp [Fold.dimap, LawfulProfunctor.dimap_comp]
+
 def run {F} [Foldable F] [LawfulFoldable F]
     (f : Fold α β) (ar : F α) : β :=
 Quot.liftOn f (FoldImpl.run . ar) $ by
@@ -134,6 +181,21 @@ Quot.liftOn f (FoldImpl.run . ar) $ by
   next h₀ h₁ H =>
     apply H
     apply LawfulFoldable.foldl_sim <;> auto
+open Traversable LawfulTraversable
+
+section scanl
+
+variable {F} [Traversable F] [LawfulTraversable F]
+
+def scanl (f : Fold α β) (ar : F α) : F β :=
+Quot.liftOn f (FoldImpl.scanl . ar) $ by
+  intros a b h; cases h;
+  simp [FoldImpl.scanl, _root_.scanl, accuml, ← traverse_eq_mapM]
+
+def accuml (f : Fold α β) (ar : F α) : F β × β :=
+Quot.liftOn f (FoldImpl.accuml . ar) _
+
+end scanl
 
 def mk (x₀ : α) (f : α → β → α) : Fold β α :=
 Quot.mk _ $ FoldImpl.mk _ x₀ f id
@@ -301,5 +363,29 @@ simp [ofMonoid]
 let g a b := a * h (f b)
 rw [mk_hom (g := g), h.fn_id]
 intros; apply h.fn_mul
+
+def max [LT α] [DecidableRel LT.lt (α := α)] : Fold α (Option α) :=
+Fold.mk none λ
+  | none, y => some y
+  | some x, y => some (_root_.max x y)
+
+def min [LE α] [DecidableRel LE.le (α := α)] : Fold α (Option α) :=
+Fold.mk none λ
+  | none, y => some y
+  | some x, y => some (_root_.min x y)
+
+open One Zero
+
+def toList : Fold α (List α) :=
+List.reverse <$> Fold.mk [] (flip (.::.))
+
+def count : Fold α Nat :=
+Fold.mk 0 (λ n _ => n.succ)
+
+def sum [Zero α] [Add α] : Fold α α :=
+Fold.mk zero (.+.)
+
+def prod [One α] [Mul α] : Fold α α :=
+Fold.mk one (.*.)
 
 end Fold

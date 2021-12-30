@@ -137,13 +137,52 @@ constructor <;> intros
 
 end Const
 
-structure ApplicativeHom (F G : Type u → Type _) [Applicative F] [Applicative G] where
+section defs
+
+variable (F G : Type u → Type _) [Applicative F] [Applicative G]
+
+structure ApplicativeRel where
+  R {α} : F α → G α → Prop
+  R_pure {α} {x : α} : R (pure x) (pure x)
+  R_seq {α β : Type u} (f : F (α → β)) (x : F α) (f' : G (α → β)) (x' : G α) :
+    R f f' →
+    R x x' →
+    R (f <*> x) (f' <*> x')
+
+structure ApplicativeHom where
   fn {α} : F α → G α
   fn_pure {α} {x : α} : fn (pure x) = pure x
   fn_seq {α β : Type u} (f : F (α → β)) (x : F α) :
     fn (f <*> x) = fn f <*> fn x
 
+end defs
+
 attribute [simp] ApplicativeHom.fn_pure ApplicativeHom.fn_seq
+
+namespace ApplicativeRel
+
+variable {F G : Type u → Type _} [Applicative F] [Applicative G]
+
+instance : CoeFun (ApplicativeRel F G) (λ _ => {α : Type _} → F α → G α → Prop) where
+  coe x := x.R
+
+variable [LawfulApplicative F] [LawfulApplicative G]
+variable (R : ApplicativeRel F G)
+
+attribute [auto] ApplicativeRel.R_pure ApplicativeRel.R_seq
+
+@[auto]
+theorem naturality {α β} (g : α → β) (x : F α) (x' : G α)
+        (hR : R x x') :
+  R (g <$> x) (g <$> x') :=
+by simp [← pure_seq]; auto
+
+def toApplicativeRel : ApplicativeRel F G where
+  R x y := f x = y
+  R_pure := by intros; simp
+  R_seq := by intros; simp [*]
+
+end ApplicativeRel
 
 namespace ApplicativeHom
 
@@ -159,6 +198,11 @@ variable (f : ApplicativeHom F G)
 theorem naturality {α β} (g : α → β) (x : F α) :
     f (g <$> x) = g <$> f x := by
 simp [← pure_seq, fn_seq, fn_pure]
+
+def toApplicativeRel : ApplicativeRel F G where
+  R x y := f x = y
+  R_pure := by intros; simp
+  R_seq := by intros; simp [*]
 
 end ApplicativeHom
 

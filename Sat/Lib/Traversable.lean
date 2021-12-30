@@ -59,10 +59,19 @@ extends LawfulFunctor T, LawfulFoldable T where
   foldl_eq_traverse {α β} (f : β → α → β) (x : T α) (x₀ : β) :
     Foldable.foldl f x₀ x =
     Endo.run (Const.run (traverse (Const.mk (α := α) ∘ Endo.mk ∘ flip f) x)) x₀
-  traverse_nat {α} {F G} [Applicative F] [LawfulApplicative F]
-    [Applicative G] [LawfulApplicative G]
-    (x : T α) (f : ApplicativeHom F G) (g : α → F β) :
-      f (traverse g x) = traverse (f.fn ∘ g) x
+
+  traverse_sim {α} {F G}
+               [Applicative F] [LawfulApplicative F]
+               [Applicative G] [LawfulApplicative G]
+               (x : T α) (R : ApplicativeRel F G)
+               (f : α → F β) (g : α → G β) :
+      (∀ a, R (f a) (g a)) →
+      R (traverse f x) (traverse g x)
+
+  -- traverse_nat {α} {F G} [Applicative F] [LawfulApplicative F]
+  --   [Applicative G] [LawfulApplicative G]
+  --   (x : T α) (f : ApplicativeHom F G) (g : α → F β) :
+  --     f (traverse g x) = traverse (f.fn ∘ g) x
 
 namespace LawfulTraversable
 
@@ -71,5 +80,18 @@ variable {T} [Traversable T] [LawfulTraversable T]
 theorem id_traverse {α} (x : T α) : traverse Id.mk x = Id.mk x := by
 have := (map_eq_traverse id x).symm
 simp [id_map] at this; assumption
+
+section nat
+variable {T : Type u → Type u} [Traversable T] [LawfulTraversable T]
+variable {F : Type u → Type u} [Applicative F] [LawfulApplicative F]
+variable {G : Type u → Type u} [Applicative G] [LawfulApplicative G]
+
+theorem traverse_nat {α}  (x : T α) (f : ApplicativeHom F G) (g : α → F β) :
+      f (traverse g x) = traverse (f.fn ∘ g) x := by
+let R := f.toApplicativeRel
+apply LawfulTraversable.traverse_sim _ R; intro a
+simp [ApplicativeHom.toApplicativeRel]
+
+end nat
 
 end LawfulTraversable

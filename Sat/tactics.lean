@@ -3,6 +3,8 @@ import Lean.Elab.Tactic.Basic
 import Lean.Elab.Tactic.Location
 import Lean.Elab.Command
 
+import Sat.Lib.Array.Control
+
 class Reflexive (R : α → α → Prop) where
   refl x : R x x
 
@@ -26,6 +28,11 @@ macro "left" : tactic =>
 
 macro "right" : tactic =>
   `(tactic| apply Or.inr)
+
+syntax "refl" : tactic
+
+macro "congr" : tactic =>
+  `(tactic| repeat first | apply congrArg | apply congrFun | refl)
 
 -- TODO: import mathlib and get rid of this
 syntax "extOrSkip" (ident)* : tactic
@@ -55,13 +62,16 @@ initialize registerTraceClass `substAll
 open Expr Lean.Meta
 -- #check or
 def applyUnifyAll (g : MVarId) (lmm : Expr) : MetaM (List MVarId) := do
-  let gs ← apply g lmm
+  trace[auto.lemmas]"try {lmm}"
+  trace[auto.lemmas]"type: {(← inferType lmm)}"
+  trace[auto.goal]"goal {(← inferType (mkMVar g))}"
+  let gs ← try apply g lmm
+           catch e =>
+             trace[auto.apply.failure]"error: {e.toMessageData}"
+             throw e
   trace[auto.lemmas]"{gs.length} new goals"
-  trace[auto.lemmas]"types: {(← gs.mapM (inferType ∘ mkMVar))}"
-  trace[auto.lemmas]"types of types: {(← gs.mapM (λ a => do inferType (← inferType $ mkMVar a)))}"
   guard (← gs.allM λ v => do
     (← inferType (← inferType (mkMVar v))).isProp)
-  trace[auto.lemmas]"all props"
   return gs
 
 def tacRefl : TacticM Unit := do
@@ -175,7 +185,7 @@ def pick [Alternative m] [Monad m] [MonadBacktrack σ m] (l : List α) : SearchT
 def pick' [Alternative m] [Monad m] [MonadBacktrack σ m] (l : Array α) : SearchT δ m α :=
 λ g => do
   let s ← saveState
-  l.toList.firstM λ a => do
+  l.firstM λ a => do
     restoreState s
     g a
 
@@ -368,39 +378,34 @@ open Lean Meta
 
 
 def getAutoLemmas [Monad m] [MonadEnv m] : m NameSet := do
-  -- let n ← getMainModule
   let d := (← autoExtension.getState (← getEnv))
   return d
     |>.insert ``True.intro
     |>.insert ``Iff.intro
     |>.insert ``And.intro
-  -- .insert ``True.intro ()
-  -- let env ← getEnv
-  -- let mut ls : NameSet := NameSet.empty
-  -- for (n, c) in env.constants.map₁.toList do
-  --   if let some z := autoLemmasAttr.getParam env n then
-  --     ls := ls.insert n
-  -- IO.println ls.toList
-  -- let n ← ().mainModule
-  -- IO.println $ (← getEnv).getModuleIdxFor? n |>.isSome
-  -- return l
 
+def getAutoList [Monad m] [MonadEnv m] (hyps : Array Name := #[]) : m (Array Name) := do
+  return hyps ++ (← getAutoLemmas).toArray
+
+initialize registerTraceClass `auto
 initialize registerTraceClass `auto.apply
-initialize registerTraceClass `auto.iterate
 initialize registerTraceClass `auto.apply.attempts
+initialize registerTraceClass `auto.apply.failure
+initialize registerTraceClass `auto.destruct_hyp
+initialize registerTraceClass `auto.goal
+initialize registerTraceClass `auto.iterate
 initialize registerTraceClass `auto.lemmas
 
 open Lean
 
--- def
--- @[macro autoAttr] def addAutoLemma : Tactic := fun stx =>
-  -- _
--- #exit
--- @[macro applyAutoLemma]
-def Meta.applyAuto : SearchTacticM δ Unit := SearchTacticM.focus $ do
-  let n ← SearchT.pick (← (getAutoLemmas)).toList
+def Meta.applyAuto (ns : Array Name) : SearchTacticM δ Unit :=
+SearchTacticM.focus do
+  let n ← SearchT.pick' ns
   traceM `auto.lemmas s!"Lemma: {n}"
-  liftMetaTactic (applyUnifyAll . (← (mkConstWithLevelParams n : TacticM _)))
+  let mut lmm ← (mkConstWithFreshMVarLevels n : TacticM _)
+  Lean.Elab.Term.synthesizeSyntheticMVars true
+  lmm ← instantiateMVars lmm
+  liftMetaTactic (applyUnifyAll . lmm)
 
 def Meta.applyAssumption : SearchTacticM δ Unit := SearchTacticM.focus $ do
   let x ← SearchT.pick' (← getLCtx).getFVarIds
@@ -409,20 +414,8 @@ def Meta.applyAssumption : SearchTacticM δ Unit := SearchTacticM.focus $ do
   traceM `auto.lemmas s!"Hyp: {lctx.get! x |>.userName}"
   liftMetaTactic (applyUnifyAll . (mkFVar x))
 
--- #exit
-
--- attribute [auto] And.intro
-
-elab "#print_auto_db" : command => do
+elab "#print" "auto_db" : command => do
   IO.println (← getAutoLemmas).toList
-
--- elab "apply_auto_lemma" : tactic => withMainContext Meta.applyAuto
-
--- #exit
--- example : True :=
--- by apply_auto_lemma
-
-initialize registerTraceClass `auto.destruct_hyp
 
 instance : ToMessageData LocalContext where
   toMessageData lctx := toMessageData
@@ -432,7 +425,6 @@ instance : ToMessageData LocalContext where
 def Meta.destructHyp : TacticM Unit := focus $ do
   let lctx ← getLCtx
   let mut changed := false
-  -- let xs := [ x <- lctx]
   trace[auto.destruct_hyp] "local context: {lctx}"
   for x in lctx do
     trace[auto.destruct_hyp]"local: {x.userName}"
@@ -446,7 +438,6 @@ def Meta.destructHyp : TacticM Unit := focus $ do
           InductionSubgoal.mvarId ∘ CasesSubgoal.toInductionSubgoal
       changed := true
   guard changed
-  -- return ()
 
 section HOrElse
 variable  [Alternative m] [Monad m] [MonadBacktrack σ m]
@@ -458,35 +449,34 @@ instance : HOrElse (SearchT δ m α) (m α) (SearchT δ m α) where
 
 end HOrElse
 
--- def traceState
-
 def withMainContext' (x : SearchTacticM δ α) : SearchTacticM δ α :=
 λ f => withMainContext (x f)
 
-def Meta.tacAutoStep : SearchTacticM δ Unit :=
+def Meta.tacAutoStep (ns : Array Name) : SearchTacticM δ Unit :=
 withMainContext' $
   Lean.Elab.Tactic.tacRefl <|>
   Meta.applyAssumption <|>
   Meta.destructHyp <|>
   liftMetaTactic1 ((some ∘ Prod.snd) <$> intro1 .) <|>
-  Meta.applyAuto
-  -- (do let g ← getMainGoal; (throwError "do {(← ppGoal g)}") : TacticM Unit)
+  Meta.applyAuto ns
 
-def Meta.tacAuto : SearchTacticM δ Unit :=
+def Meta.tacAuto (ns : Array Name) : SearchTacticM δ Unit :=
 SearchTacticM.focusAndDone $
-iterate 10 Meta.tacAutoStep
+iterate 10 <| Meta.tacAutoStep ns
 
 elab "destruct_hyp" : tactic => withMainContext Meta.destructHyp
-elab "auto" : tactic => withMainContext Meta.tacAuto.run
-elab "auto_step" : tactic => withMainContext Meta.tacAutoStep.run
-elab "apply_auto" : tactic => withMainContext Meta.applyAuto.run
+elab "auto" : tactic => do
+  withMainContext (Meta.tacAuto (← getAutoList)).run
+elab "auto_step" : tactic => do
+  withMainContext (Meta.tacAutoStep (← getAutoList)).run
+elab "apply_auto" : tactic => do
+  withMainContext (Meta.applyAuto (← getAutoList)).run
 
-  -- destruct_hyp
+syntax "auto" "[" ident,* "]" : tactic
 
--- #exit
--- example : True := by apply_auto_lemma
--- #exit
-initialize registerTraceClass `auto
+elab "auto" "[" ids:ident,* "]" : tactic => do
+  let ids ← getAutoList (← ids.getElems.mapM resolveGlobalConstNoOverload)
+  withMainContext (Meta.tacAuto ids).run
 
 -- macro "auto" : tactic =>
 --   `(tactic|
