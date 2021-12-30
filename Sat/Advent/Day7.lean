@@ -9,14 +9,6 @@ import Sat.Advent.IO
 -- (lean--version)
 -- ("4" "0" "0-nightly-2021-12-05")
 
-def examples :=
-"16,1,2,0,4,2,7,1,2,14"
-
-def parseInput (input : String) : IO (Array Nat) := do
-Array.mk <| (← input.splitOn "," |>.mapM parseNat)
-
-def inputFileName := "Sat/Advent/Day7_input.txt"
-
 section day7
 
 def dist (i j : Nat) : Nat := max (i - j) (j - i)
@@ -35,6 +27,16 @@ if h : ar.size > 0 then
 else
   0
 
+namespace Day7
+
+def examples :=
+"16,1,2,0,4,2,7,1,2,14"
+
+def parseInput (input : String) : IO (Array Nat) := do
+Array.mk <| (← input.splitOn "," |>.mapM parseNat)
+
+def inputFileName := "Sat/Advent/Day7_input.txt"
+
 def main : IO Unit := do
 -- let ar ← parseInput <| (← IO.FS.lines inputFileName).get! 0
 let ar ← parseInput examples
@@ -45,3 +47,5 @@ IO.println <| cost ar 5
 IO.println <| cost ar 1
 
 #eval main
+
+end Day7

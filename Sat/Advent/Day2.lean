@@ -1,6 +1,4 @@
 
-def inputFileName := "Sat/Advent/Day2_input.txt"
-
 inductive Direction :=
 | Up | Down | Forward
 deriving Repr
@@ -28,6 +26,8 @@ match r with
 | some s => pure s
 | none => throw (IO.userError "parsing error")
 
+namespace Day2
+
 def examples :=
 "forward 5
 down 5
@@ -53,7 +53,7 @@ def runStep' : Nat × Nat × Nat → Step → Nat × Nat × Nat
 
 def runTractory' (l : Array Step) : Nat × Nat × Nat :=
 l.foldl runStep' (0, 0, 0)
-
+def inputFileName := "Sat/Advent/Day2_input.txt"
 
 def main : IO Unit := do
 IO.println (← System.FilePath.pathExists inputFileName)
@@ -64,3 +64,5 @@ let ⟨h,v,_⟩ := runTractory' (← lns.mapM parseStep)
 IO.println (h * v)
 
 #eval main
+
+end Day2

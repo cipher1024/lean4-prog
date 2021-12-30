@@ -386,6 +386,6 @@ end CNF
 
 theorem foo' (p q r : Prop) :
   p ∧ ¬ q ∨ q :=
-by { myTac }
+by { myTac; admit }
 
 -- #check 3

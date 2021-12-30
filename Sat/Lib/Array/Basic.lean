@@ -146,7 +146,7 @@ focus
 
 end Array
 
-def SubarrayQ.R {α} (ar₀ ar₁ : Subarray α)
+-- def SubarrayQ.R {α} (ar₀ ar₁ : Subarray α)
 
 structure Buffer (m α) where
 mkImpl ::

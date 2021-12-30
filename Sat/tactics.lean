@@ -257,19 +257,14 @@ def iterate [Monad m] [MonadLift TacticM m]: Nat → m PUnit → m PUnit
 def tacMyApply (e : Expr) : TacticM Unit :=
   liftMetaTactic (applyUnifyAll . e)
 
--- #check repeat
 end Lean.Elab.Tactic
 
--- syntax "refl" : tactic
 open Lean.Elab.Tactic
 
-elab "apply1" t:term : tactic => withMainContext (do tacMyApply (← elabTerm t none))
-
+elab "apply1" t:term : tactic =>
+  withMainContext (do tacMyApply (← elabTerm t none))
 elab "refl" : tactic => withMainContext Lean.Elab.Tactic.tacRefl
 elab "substAll" : tactic => withMainContext Lean.Elab.Tactic.tacSubstAll
-
--- macro "refl" : tactic =>
---   `(tactic| exact Reflexive.refl _)
 
 macro "exfalso" : tactic =>
   `(tactic| apply False.elim)
@@ -298,7 +293,6 @@ instance : @Trans Nat Nat Nat LT.lt LT.lt LT.lt where
 
 open Lean.Elab.Tactic
 open Lean
--- (TagAttribute registerTagAttribute)
 
 syntax (name := auto) "auto" : attr
 
@@ -455,6 +449,7 @@ def withMainContext' (x : SearchTacticM δ α) : SearchTacticM δ α :=
 def Meta.tacAutoStep (ns : Array Name) : SearchTacticM δ Unit :=
 withMainContext' $
   Lean.Elab.Tactic.tacRefl <|>
+  liftMetaMAtMain Meta.contradiction <|>
   Meta.applyAssumption <|>
   Meta.destructHyp <|>
   liftMetaTactic1 ((some ∘ Prod.snd) <$> intro1 .) <|>

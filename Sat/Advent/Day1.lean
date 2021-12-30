@@ -1,6 +1,6 @@
 
 import Sat.Advent.IO
-import Sat.Lib.Array
+import Sat.Lib.Array.Basic
 
 def measurements_ex : Array Nat :=
 #[199,
@@ -83,6 +83,7 @@ let count : Window × Nat → Nat → Window × Nat
       else ⟨next, acc⟩
 ((ar.toSubarray 3).foldl count (first, 0)).2
 
+namespace Day1
 
 def main : IO Unit := do
 IO.println "hello"
@@ -90,3 +91,5 @@ IO.println measurements_ex
 IO.println (← IO.currentDir)
 let input ← readInput
 IO.println $ countWindowIncreases input
+
+end Day1

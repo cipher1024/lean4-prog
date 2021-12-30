@@ -35,7 +35,7 @@ def accuml (x₀ : σ) (x : T α) : T β × σ :=
 StateT.run (m := Id) (mapM (StateT.mk.{u,u} ∘ f) x) x₀
 
 def scanl (x₀ : σ) (x : T α) : T β :=
-accuml f x₀ x |>.1
+StateT.run' (m := Id) (mapM (StateT.mk.{u,u} ∘ f) x) x₀
 
 def accumr (x₀ : σ) (x : T α) : T β × σ :=
 StateT.run (m := Id) (Op1.run (traverse (Op1.mk.{u,u} ∘ StateT.mk.{u,u} ∘ f) x)) x₀

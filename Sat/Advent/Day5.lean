@@ -2,19 +2,9 @@
 import Sat.Advent.IO
 import Std.Data.HashMap
 
-def examples :=
-"0,9 -> 5,9
-8,0 -> 0,8
-9,4 -> 3,4
-2,2 -> 2,1
-7,0 -> 7,4
-6,4 -> 2,0
-0,9 -> 2,9
-3,4 -> 1,4
-0,0 -> 8,8
-5,5 -> 8,2"
-
 open Std (HashMap)
+
+namespace Day5
 
 def Grid := HashMap (Nat × Nat) Nat
 
@@ -53,6 +43,8 @@ match EStateM.run p input.toSubstring with
 | EStateM.Result.ok r s ..  => return r
 | EStateM.Result.error e s ..  => throw $ IO.userError e
 
+namespace Parser
+
 def parseNat : Parser Nat := do
 let input ← get
 let input := input.dropWhile (not ∘ Char.isDigit)
@@ -71,6 +63,8 @@ return { x := (← parseNat)
 def parseInput (input : Array String) : IO (Array Line) :=
 input.mapM <| parseLine.run
 
+end Parser
+
 def processLine : Nat × Grid → Line → Nat × Grid
 | g, ln =>
   let mark : Nat × Grid → Nat × Nat → Nat × Grid
@@ -88,10 +82,22 @@ lns.foldl processLine (0, Std.mkHashMap)
 
 def inputFileName := "Sat/Advent/Day5_input.txt"
 
+def examples :=
+"0,9 -> 5,9
+8,0 -> 0,8
+9,4 -> 3,4
+2,2 -> 2,1
+7,0 -> 7,4
+6,4 -> 2,0
+0,9 -> 2,9
+3,4 -> 1,4
+0,0 -> 8,8
+5,5 -> 8,2"
+
 def main : IO Unit := do
 -- let lns := lines examples
 let lns ← IO.FS.lines inputFileName
-let lns ← parseInput lns
+let lns ← Parser.parseInput lns
 -- let lns : Array _ := lns[:6]
 let ⟨c, m⟩ := processLines <| lns
 -- IO.println m.toList
@@ -103,3 +109,5 @@ IO.println <| c
 -- IO.println <| lns.size
 
 #eval main
+
+end Day5

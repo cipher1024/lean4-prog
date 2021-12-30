@@ -177,10 +177,10 @@ theorem naturality {α β} (g : α → β) (x : F α) (x' : G α)
   R (g <$> x) (g <$> x') :=
 by simp [← pure_seq]; auto
 
-def toApplicativeRel : ApplicativeRel F G where
-  R x y := f x = y
-  R_pure := by intros; simp
-  R_seq := by intros; simp [*]
+-- def toApplicativeHom : ApplicativeHom F G where
+--   fn x := f x = y
+--   fn_pure := by intros; simp
+--   fn_seq := by intros; simp [*]
 
 end ApplicativeRel
 

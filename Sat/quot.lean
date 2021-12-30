@@ -1,4 +1,4 @@
--- #exit
+
 import Sat.Tactics
 
 inductive EqvGen (R : α → α → Prop) : α → α → Prop :=

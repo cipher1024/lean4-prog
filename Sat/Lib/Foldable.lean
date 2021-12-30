@@ -1,5 +1,5 @@
 
-import Sat.Lib.Array
+import Sat.Lib.Array.Basic
 import Sat.Lib.Monoid
 
 class Foldable (F : Type u → Type v) where

@@ -1,6 +1,4 @@
 
-def inputFileName := "Sat/Advent/Day3_input.txt"
-
 def readBinNum? (s : String) : IO (Array Nat) :=
   if s.isNat then
     pure <| s.foldl (fun n c => n.push (c.toNat - '0'.toNat)) (Array.mkEmpty 5)
@@ -84,9 +82,15 @@ def decodeAirRates (input : Array (Array Nat)) : Nat × Nat × Nat :=
   let CO₂Rate := toDecimal $ iterateAirRatesFilter 0 false input
   (O₂Rate, CO₂Rate, O₂Rate * CO₂Rate)
 
+namespace Day3
+
+def inputFileName := "Sat/Advent/Day3_input.txt"
+
 def main : IO Unit := do
   let lns ← (← IO.FS.lines inputFileName).mapM readBinNum?
   IO.println $ decodeRates lns
   IO.println $ decodeAirRates lns
 
 #eval main
+
+end Day3

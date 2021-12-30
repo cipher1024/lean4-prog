@@ -1,11 +1,8 @@
-import Sat.Lib.Array
+import Sat.Lib.Array.Basic
 import Sat.Advent.IO
 import Sat.Advent.Day1
 
 -- #check Array.size_map
-
-def examples :=
-"3,4,3,1,2"
 
 namespace Window
 
@@ -45,8 +42,13 @@ days.repeat age p |>.values |>.foldl (.+.) 0
 
 end Population
 
+namespace Day6
+
 def parseInput (input : String) : IO (Array Nat) := do
 Array.mk <| (← input.splitOn "," |>.mapM parseNat)
+
+def examples :=
+"3,4,3,1,2"
 
 def inputFileName' := "Sat/Advent/Day6_input.txt"
 
@@ -64,3 +66,5 @@ IO.println $ p.count 256
 -- IO.println $ w.current
 
 #eval main'
+
+end Day6

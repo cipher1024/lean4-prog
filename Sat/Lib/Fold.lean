@@ -1,5 +1,6 @@
 
-import Sat.Lib.Array
+import Sat.Lib.Array.Basic
+import Sat.Lib.Prod
 import Sat.Lib.Profunctor
 import Sat.Lib.Foldable
 import Sat.Lib.Traversable
@@ -187,13 +188,55 @@ section scanl
 
 variable {F} [Traversable F] [LawfulTraversable F]
 
+section SIM
+variable {σ σ'} (SIM : σ → σ' → Prop)
+  -- (h₁ : ∀ (x : σ) (x' : σ') (y : α), SIM x x' → SIM (f x y) (g x' y))
+
+def scanl_SIM :
+    ApplicativeRel (StateM σ) (StateM σ') where
+  R a b := ∀ x y, SIM x y →
+      (a.run x).1 = (b.run y).1 ∧
+      SIM (a.run x).2 (b.run y).2
+  R_pure := by
+    intros; simp [pure, StateT.pure, StateT.run]; auto
+  R_seq := by
+    intros _ _ _ _ _ _ h₀ h₁ x y Hxy; constructor
+    focus
+      simp
+      cases (h₀ _ _ Hxy)
+      -- cases (h₁ _ _ Hxy)
+      apply congr
+      . auto
+      apply (h₁ _ _ _).1; auto
+    focus
+      simp
+      apply (h₁ _ _ _).2
+      apply (h₀ _ _ _).2; auto
+
+end SIM
+
 def scanl (f : Fold α β) (ar : F α) : F β :=
 Quot.liftOn f (FoldImpl.scanl . ar) $ by
-  intros a b h; cases h;
+  intros a b h; cases h; next SIM h₀ h₁ h₂ =>
+  next σ σ' x₀ y₀ f g out out' =>
   simp [FoldImpl.scanl, _root_.scanl, accuml, ← traverse_eq_mapM]
+  let R := scanl_SIM SIM
+  apply (traverse_sim (R := R) _ _ _ _ _ _ _).1
+   <;> auto
 
 def accuml (f : Fold α β) (ar : F α) : F β × β :=
-Quot.liftOn f (FoldImpl.accuml . ar) _
+Quot.liftOn f (FoldImpl.accuml . ar) $ by
+  intros a b h; cases h; next SIM h₀ h₁ h₂ =>
+  next σ σ' x₀ y₀ f g out out' =>
+  simp [FoldImpl.accuml, _root_.accuml, ← traverse_eq_mapM]
+  let R := scanl_SIM SIM
+  -- apply Prod.eta
+  apply Prod.eta <;> simp
+  . apply (traverse_sim (R := R) _ _ _ _ _ _ _).1
+     <;> auto
+  . apply h₂
+     <;> apply (traverse_sim (R := R) _ _ _ _ _ _ _).2
+     <;> auto
 
 end scanl
 

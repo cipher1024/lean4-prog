@@ -4,6 +4,9 @@ import Sat.Lib.Classical
 namespace Nat
 -- #check Nat.add_assoc
 
+attribute [auto] Nat.le_of_lt Nat.le_add_right
+attribute [simp] Nat.add_succ Nat.succ_sub_succ
+
 @[simp]
 theorem zero_sub (n : Nat) : 0 - n = 0 := by
   induction n <;> simp [sub_succ, *]
@@ -58,8 +61,6 @@ rw [Nat.add_comm]; apply add_lt_of_lt_sub_r
 theorem succ_lt_succ_iff {n m : Nat} : succ n < succ m ↔ n < m :=
 ⟨ lt_of_succ_lt_succ, succ_lt_succ ⟩
 
-attribute [simp] Nat.add_succ Nat.succ_sub_succ
-
 @[simp]
 theorem zero_lt_sub_iff_lt {x y : Nat} :
   0 < y - x ↔ x < y := by
@@ -100,8 +101,6 @@ theorem add_sub_cancel {x y : Nat} :
   intros h; simp [add_sub_assoc, *]
   rw [Nat.add_comm, ← add_sub_assoc, Nat.sub_self, Nat.add_zero]
   refl
-
-attribute [auto] Nat.le_add_right
 
 theorem min_lt_min_l {x x' y y' : Nat}
   (Hx : x < x')
