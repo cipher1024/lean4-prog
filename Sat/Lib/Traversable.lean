@@ -45,6 +45,20 @@ accumr f x₀ x |>.1
 
 end Accum
 
+
+section AccumIdx
+
+variable {T : Type u → Type u} [Traversable.{u} T]
+variable {α β : Type u} (f : Nat → α → σ → β × σ)
+
+def accumlIdx (x₀ : σ) (x : T α) : T β × σ :=
+accuml (λ a (x, i) => f i a x |>.map id (., i+1)) (x₀, 0) x |>.map id Prod.fst
+
+def scanlIdx (x₀ : σ) (x : T α) : T β :=
+accumlIdx f x₀ x |>.fst
+
+end AccumIdx
+
 class LawfulTraversable (T : Type u → Type u) [Traversable T]
 extends LawfulFunctor T, LawfulFoldable T where
   traverse_eq_mapM {α β} {M} [Monad M] [LawfulMonad M] (f : α → M β) (x : T α) :

@@ -1,6 +1,7 @@
 
 import Sat.Lib.Nat
 import Sat.Lib.Equiv
+import Sat.Lib.Traversable
 import Sat.Quot
 import Sat.Tactics
 import Sat.Advent.IO
@@ -15,6 +16,11 @@ def dist (i j : Nat) : Nat := max (i - j) (j - i)
 
 def cost (input : Array Nat) (i : Nat) : Nat :=
 input.foldl (λ acc pos => acc + dist pos i) 0
+
+def posToCount : Array Nat → Array Nat := sorry
+
+def cost' (input : Array Nat) (i : Nat) : Array Nat :=
+scanl (λ acc n => _) 0 (posToCount input)
 
 end day7
 
