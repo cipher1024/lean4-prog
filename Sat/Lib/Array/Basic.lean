@@ -144,9 +144,520 @@ focus
   intros; simp [seq_eq_bind_map, map_eq_pure_bind]
   refl
 
+@[simp]
+theorem toArray_toList {α} (ar : Array α) : ar.toList.toArray = ar := sorry
+
+@[simp]
+theorem toList_toArray {α} (l : List α) : l.toArray.toList = l := sorry
+
+@[simp]
+theorem size_toArray {α} (l : List α) : l.toArray.size = l.length := sorry
+
+@[simp]
+theorem length_toList {α} (ar : Array α) : ar.toList.length = ar.size := sorry
+
+theorem foldl_toArray {α β : Type _} (f : β → α → β) (ar : List α) x₀ :
+  n = ar.length →
+  ar.toArray.foldl f x₀ 0 n = ar.foldl f x₀ := sorry
+
+@[simp]
+theorem foldl_toList {α β : Type _} (f : β → α → β) (ar : Array α) x₀ :
+  ar.toList.foldl f x₀ = ar.foldl f x₀ := sorry
+
+theorem mkEmpty_eq_mkEmpty {α n} m :
+  mkEmpty (α := α) n = mkEmpty m := rfl
+
 end Array
 
--- def SubarrayQ.R {α} (ar₀ ar₁ : Subarray α)
+
+namespace Subarray
+
+def size (ar : Subarray α) : Nat := ar.stop - ar.start
+
+def get (ar : Subarray α) (i : Nat) (Hi : i < ar.size) : α :=
+have : ar.start + i < Array.size ar.as := by
+  have := Nat.add_lt_of_lt_sub_l Hi
+  apply Nat.lt_of_lt_of_le this ar.h₂
+ar.as.get ⟨ar.start + i, this⟩
+
+def get! [Inhabited α] (ar : Subarray α) (i : Nat) : α :=
+ar.as.get! (ar.start + i)
+
+def get? (ar : Subarray α) (i : Nat) : Option α :=
+ar.as.get? (ar.start + i)
+
+def empty (ar : Subarray α) : Bool := ar.start == ar.stop
+
+@[simp]
+theorem stop_popFront (ar : Subarray α) :
+  ar.popFront.stop = ar.stop := by
+simp [popFront]
+byCases h : ar.start < ar.stop <;> simp [*]
+
+@[simp]
+theorem size_popFront (ar : Subarray α) :
+  0 < ar.size →
+  ar.popFront.size = ar.size - 1 := by
+intros h
+have h : ar.start < ar.stop := by simp [size] at h; assumption
+simp [popFront, *, size, Nat.sub_succ]
+
+@[simp]
+theorem size_le_size_as (ar : Subarray α) :
+  ar.size ≤ ar.as.size := sorry
+
+def extract (ar : Subarray α) (i j : Nat) : Subarray α :=
+  let start := min (ar.start + i) ar.stop
+  let stop := min (max (ar.start + j) start) ar.stop
+  have h₁ : start ≤ stop := by
+    simp [Nat.le_min_iff]
+    constructor
+    focus
+      apply Nat.le_max_r
+      rewrite [Nat.le_min_iff]
+      auto
+    . auto
+  have h₂ : stop ≤ ar.as.size := by
+    apply Nat.min_le_r; apply ar.h₂
+  { as := ar.as,
+    start := start,
+    stop := stop,
+    h₁ := h₁,
+    h₂ := h₂ }
+
+@[simp]
+theorem extract_eq_self (ar : Subarray α) :
+  ar.extract 0 ar.size = ar := by
+cases ar; simp [extract, size, Nat.add_sub_assoc]
+constructor
+. auto
+. apply Nat.le_max_l; simp [Nat.add_sub_cancel, *]; refl
+
+theorem get_extract (ar : Subarray α) i p q h h' :
+  (ar.extract p q).get i h = ar.get (p + i) h' := by
+simp [extract, get]
+-- have : min (ar.start + p) ar.stop + i = ar.start + (p + i) := sorry
+have : ∀ i j, i = j → ar.as.get i = ar.as.get j := by
+  intros _ _ h; subst h; refl
+apply this; clear this; simp
+have : min (ar.start + p) ar.stop = ar.start + p := by
+  rw [Nat.min_eq_iff_le_l]
+  apply Nat.le_of_lt
+  apply Nat.add_lt_of_lt_sub_l
+  apply Nat.lt_of_le_of_lt _ h'
+  apply Nat.le_add_right
+simp [this, Nat.add_assoc]
+
+theorem popFront_extract (ar : Subarray α) p q
+  (Hp : p < q)
+  (Hq : q ≤ ar.size) :
+  (ar.extract p q).popFront  = ar.extract p.succ q := by
+have h₄ : p < ar.size := Nat.lt_of_lt_of_le Hp Hq
+have H := Nat.add_lt_of_lt_sub_l h₄
+simp [extract, popFront]
+split <;> simp
+next h =>
+  have h₀ : min (ar.start + p) ar.stop = ar.start + p := by
+    simp [Nat.le_of_lt, *]
+  have h₁ : min (ar.start + p).succ ar.stop = (ar.start + p).succ := by
+    simp [Nat.succ_le_of_lt, *]
+  have h₂ : max q p = q := by
+    simp [Nat.le_of_lt, *]
+  have h₃ : max q p.succ = q := by
+    simp [Nat.le_of_lt, *]; assumption
+  simp [h₀, h₁, h₂] at h ⊢
+  rw [← Nat.add_succ, Nat.max_add, h₃]
+next h =>
+  exfalso; apply h; clear h
+  have : min (ar.start + p) ar.stop = (ar.start + p) := by
+    simp; apply Nat.le_of_lt; assumption
+  have : min (ar.start + q) ar.stop = (ar.start + q) := by
+    simp [Nat.add_le_iff_l, ar.h₁]; assumption
+  have : max q p = q := by
+    simp; apply Nat.le_of_lt; assumption
+  simp [*]
+  apply Nat.add_lt_add_r; auto
+
+theorem size_extract (ar : Subarray α) p q
+  (h₀ : p ≤ q) (h₁ : q ≤ ar.size) :
+  (ar.extract p q).size = q - p := by
+have : min (ar.start + p) ar.stop = ar.start + p :=
+  by simp [Nat.add_le_iff_l, ar.h₁]; trans _ <;> assumption
+have : max (ar.start + q) ar.start = ar.start + q :=
+  by simp [Nat.add_le_iff_r]; apply Nat.le_add_right
+have : min (ar.start + q) ar.stop = ar.start + q :=
+  by simp [Nat.add_le_iff_l, ar.h₁]; assumption
+have : max q p = q := by simp [*]
+simp [extract, size, *]
+apply congrFun; apply congrArg
+rw [Nat.add_comm, ← Nat.add_sub_assoc, Nat.sub_self, Nat.add_zero]
+refl
+
+attribute [simp] measure invImage InvImage Nat.lt_wfRel
+
+syntax "prove_decr" : tactic
+syntax "decr_step" : tactic
+syntax "decr_finish" : tactic
+
+macro_rules
+| `(tactic| decr_finish) => `(tactic| assumption)
+
+macro_rules
+| `(tactic| decr_finish) => `(tactic| constructor)
+
+macro_rules
+| `(tactic| decr_step) => `(tactic| apply Nat.pred_lt; apply Nat.sub_ne_zero)
+
+macro_rules
+| `(tactic| decr_step) => `(tactic| apply Nat.sub_lt)
+
+macro_rules
+| `(tactic| prove_decr) =>
+  `(tactic| { simp [*]; decr_step <;> decr_finish })
+
+def takeWhileAux
+            (p : α → Bool) (i : Nat) (ar : Subarray α) : Subarray α :=
+if h : i < ar.size then
+  if p $ ar.get i h then takeWhileAux p (Nat.succ i) ar
+  else ar.extract 0 i
+else ar.extract 0 i
+termination_by measure λ ⟨_, _, i, ar⟩ => ar.size - i
+decreasing_by prove_decr
+
+theorem takeWhileAux_eq (p : α → Bool) (ar : Subarray α) :
+  takeWhileAux p i ar =
+  if h : i < ar.size then
+    if p $ ar.get i h then takeWhileAux p i.succ ar
+    else ar.extract 0 i
+  else ar.extract 0 i := by
+simp only [takeWhileAux]
+simp only [takeWhileAux._unary]
+rewrite [WellFounded.fix_eq]
+refl
+
+def takeWhile (p : α → Bool) (ar : Subarray α) : Subarray α :=
+takeWhileAux p 0 ar
+
+def spanAux (p : α → Bool) (i : Nat)
+    (ar : Subarray α) : Subarray α × Subarray α :=
+if h : i < ar.size then
+  if p $ ar.get i h then spanAux p (Nat.succ i) ar
+  else (ar.extract 0 i, ar.extract i ar.size)
+else (ar.extract 0 i, ar.extract i ar.size)
+termination_by measure λ ⟨_, _, i, ar⟩ => ar.size - i
+decreasing_by prove_decr
+
+theorem spanAux_eq (p : α → Bool) (i : Nat) (ar : Subarray α) :
+  spanAux p i ar =
+  if h : i < ar.size then
+    if p $ ar.get i h then spanAux p (Nat.succ i) ar
+    else (ar.extract 0 i, ar.extract i ar.size)
+  else (ar.extract 0 i, ar.extract i ar.size) := by
+simp only [spanAux]
+simp only [spanAux._unary]
+rewrite [WellFounded.fix_eq]
+refl
+
+def span (p : α → Bool) (ar : Subarray α) : Subarray α × Subarray α :=
+spanAux p 0 ar
+
+def dropWhile
+            (p : α → Bool) (ar : Subarray α) : Subarray α :=
+if h : 0 < ar.size then
+  if p $ ar.get 0 h then dropWhile p ar.popFront
+  else ar
+else ar
+termination_by measure λ ⟨_, _, ar⟩ => ar.size
+decreasing_by prove_decr
+
+theorem dropWhile_eq (p : α → Bool) (ar : Subarray α) :
+  dropWhile p ar =
+  if h : 0 < ar.size then
+    if p $ ar.get 0 h then dropWhile p ar.popFront
+    else ar
+  else ar := by
+simp only [dropWhile]
+simp only [dropWhile._unary]
+rewrite [WellFounded.fix_eq]
+refl
+
+theorem Nat.strong_ind {P : Nat → Prop} :
+  (∀ x, (∀ y, y < x → P y) → P x) → ∀ a, P a :=
+by intros h x; apply Nat.lt_wfRel.wf.induction (C := P) x h
+
+theorem Nat.le_of_not_lt {x y : Nat}
+        (h : ¬ y < x) :
+  x ≤ y := by
+cases Nat.lt_or_ge y x <;> auto
+
+theorem span_eq_takeWhile_dropWhile (p : α → Bool) (ar : Subarray α) :
+  ar.span p = (ar.takeWhile p, ar.dropWhile p) := by
+simp only [span, takeWhile]
+suffices h : ∀ i,
+    i ≤ ar.size →
+    spanAux p i ar =
+    (takeWhileAux p i <| ar,
+     dropWhile p <| ar.extract i ar.size) by
+  specialize h 0
+  simp [h, *, Nat.zero_le]
+intros i
+generalize hk : (ar.size - i) = k
+induction k using Nat.strong_ind generalizing i;
+next ih =>
+  rw [spanAux_eq, dropWhile_eq, takeWhileAux_eq]
+  byCases h₀ : i < size ar <;> simp [*]
+  focus
+    subst hk
+    have : i + 0 < ar.size := by simp [*]
+    have h₅ : i ≤ ar.size := Nat.le_of_lt h₀
+    have h₄ : ar.size ≤ ar.size := Nat.le_refl _
+    have h : 0 < size (extract ar i (size ar)) :=
+      by simp [size_extract, *]
+    have h₃ : get ar (i + 0) this = get ar i h₀ :=
+      by revert this; rw [Nat.add_zero]; intro; refl
+    simp [get_extract (h' := this), h, h₃]
+    split
+    focus
+      have : size ar ≤ size ar := by refl
+      simp [popFront_extract, *]
+      apply ih _ _ _ rfl h₀
+      simp [Nat.sub_succ]
+      apply Nat.pred_lt
+      apply Nat.sub_ne_zero; assumption
+    focus
+      intros; refl
+  focus
+    intros h₁; subst hk
+    have h₅ : ar.size ≤ i := Nat.le_of_not_lt h₀
+    have h₅ := Nat.le_antisymm h₅ h₁
+    subst h₅
+    have h₄ : ar.size ≤ ar.size := Nat.le_refl _
+    have h : ¬ 0 < size (extract ar (size ar) (size ar)) :=
+      by simp [size_extract, *]
+    simp [*]
+
+end Subarray
+
+namespace Array
+variable (ar ar' : Array α)
+
+@[simp]
+theorem size_extract i j :
+  (ar.extract i j).size = min ar.size (j - i) :=
+sorry
+
+@[simp]
+theorem size_toSubarray i j :
+  (ar.toSubarray i j).size = min ar.size (j - i) :=
+sorry
+
+theorem lt_size_toSubarray_implies_lt_size
+        (h : k < (ar.toSubarray i j).size) :
+  i + k < ar.size := sorry
+
+@[simp]
+theorem get_toSubarray  i j k h :
+  (ar.toSubarray i j).get k h =
+  ar.get ⟨i + k, lt_size_toSubarray_implies_lt_size _ h⟩ :=
+sorry
+
+@[simp]
+def extractOffset : Fin (ar.extract i j).size → Fin ar.size
+| ⟨n, h⟩ => ⟨i + n, sorry⟩
+
+@[simp]
+theorem get_extract i j k :
+  (ar.extract i j).get k =
+  ar.get (extractOffset _ k) :=
+sorry
+
+@[simp]
+theorem get_eq_iff_get?_eq i h x :
+  ar.get ⟨i, h⟩ = x ↔
+  ar.get? i = some x :=
+sorry
+
+@[simp]
+theorem some_get_eq_get? i h :
+  some (ar.get ⟨i, h⟩) = ar.get? i :=
+sorry
+
+end Array
+
+namespace Util
+
+unsafe def isSharedUnsafe (x : @& α) : Bool := true
+
+@[inline]
+unsafe def withIsSharedUnsafe (x : α) (f : Bool → α → β)
+           (h : f true x = f false x) : β :=
+f (isSharedUnsafe x) x
+
+@[implementedBy withIsSharedUnsafe]
+def withIsShared (x : α) (f : Bool → α → β)
+           (h : f true x = f false x) : β := f true x
+
+theorem withIsShared_if_true (x : α) (f : Bool → α → β) h :
+  withIsShared x f h = f true x := rfl
+
+theorem withIsShared_if_false (x : α) (f : Bool → α → β) h :
+  withIsShared x f h = f false x := h
+
+end Util
+
+def SubarrayOfSize (n : Nat) (α) :=
+{ x : Subarray α // x.size = n }
+
+namespace SubarrayOfSize
+
+def get {n α} (ar : SubarrayOfSize n α)
+  (i : Fin n) : α :=
+ar.val.get i.1 <| ar.2.symm ▸ i.2
+
+def toSubarray_idx (ar : Subarray α) : Fin ar.size → Fin ar.as.size
+| ⟨i, h⟩ => ⟨i, sorry⟩
+
+private def subarray_set (ar : Subarray α) (i : Fin ar.size)
+            (x : α) : Subarray α where
+  as := ar.as.set (toSubarray_idx _ i) x
+  start := ar.start
+  stop := ar.stop
+  h₁ := ar.h₁
+  h₂ := by simp [ar.h₂]
+
+private theorem size_subarray_set (ar : Subarray α) i x :
+  (subarray_set ar i x).size = ar.size := rfl
+
+def set {n α} (ar : SubarrayOfSize n α)
+  (i : Fin n) (a : α) : SubarrayOfSize n α :=
+⟨ subarray_set ar.val (ar.2.symm ▸ i) a,
+  by simp [size_subarray_set, ar.2]⟩
+
+def get? {n α} (ar : SubarrayOfSize n α)
+  (i : Nat) : Option α :=
+ar.val.get? i
+
+variable (ar : SubarrayOfSize n α)
+
+@[simp]
+theorem get_set i j x :
+  (ar.set i x).get j = if i = j then x else ar.get j :=
+sorry
+
+@[simp]
+theorem get_eq_iff_get?_eq  i h x :
+  ar.get ⟨i, h⟩ = x ↔
+  ar.get? i = some x :=
+sorry
+
+@[simp]
+theorem some_get_eq_get? i h :
+  some (ar.get ⟨i, h⟩) = ar.get? i :=
+sorry
+
+end SubarrayOfSize
+
+def Subarray.Eqv {α} (n : Nat)
+  (ar₀ ar₁ : SubarrayOfSize n α) : Prop :=
+∀ i, ar₀.get i = ar₁.get i
+
+theorem Subarray.Eqv.apply {α} (n : Nat)
+        (ar₀ ar₁ : SubarrayOfSize n α)
+        (h : Subarray.Eqv n ar₀ ar₁):
+  ∀ i, i < n → ar₀.get? i = ar₁.get? i :=
+by intros;
+   rw [← SubarrayOfSize.some_get_eq_get?,
+       ← SubarrayOfSize.some_get_eq_get?]
+   <;> try assumption
+   apply congrArg; apply h
+
+def SubarrayQ (α) := Σ n, Quot <| @Subarray.Eqv α n
+
+namespace Option
+
+theorem some_inj {x y : α} (h : some x = some y) : x = y :=
+by cases h; refl
+
+end Option
+
+
+namespace SubarrayQ
+
+def ofSubarray (ar : Subarray α) : SubarrayQ α :=
+⟨ar.size, Quot.mk _ ⟨ar, rfl⟩⟩
+
+def size (ar : SubarrayQ α) := ar.1
+
+def get : (ar : SubarrayQ α) → Fin ar.size → α
+| ⟨n, ar⟩ => Quot.liftOn ar
+  (λ ar (i : Fin n) => ar.get i) $ by
+    { simp; intros a b h; apply funext; intros i;
+      simp only [SubarrayOfSize.some_get_eq_get?]
+      auto }
+
+section Subarray
+variable (ar : Subarray α)
+
+@[simp]
+theorem size_ofSubarray (ar : Subarray α) :
+  size (ofSubarray ar) = ar.size :=
+sorry
+
+end Subarray
+
+theorem ext (ar₀ ar₁ : SubarrayQ α)
+        (h₀ : ar₀.size = ar₁.size)
+        (h₁ : ∀ i h₀ h₁, ar₀.get ⟨i, h₀⟩ = ar₁.get ⟨i, h₁⟩) :
+  ar₀ = ar₁ :=
+sorry
+
+@[simp]
+theorem get_ofSubarray (ar : Subarray α) i h :
+  (ofSubarray ar).get ⟨i,h⟩ = ar.get i h :=
+sorry
+
+def unshare : SubarrayQ α → SubarrayQ α
+| ⟨n, ar⟩ =>
+Quot.liftOn ar
+  (λ ar =>
+    let ⟨ar, i, j, _, _ ⟩ := ar.1
+    Util.withIsShared ar
+      (λ shared ar =>
+        if shared
+          then ofSubarray (ar.extract i j).toSubarray
+          else ofSubarray ar[i:j])
+      (by simp; apply ext <;> simp))
+  (by simp [Util.withIsShared_if_false]
+      intros a b h; apply ext <;> simp [a.2]
+      focus
+        change (a.1.3 - a.1.2) with a.1.size
+        change (b.1.3 - b.1.2) with b.1.size
+        simp [Nat.min_eq_iff_le_r |>.2]
+        simp [a.2, b.2]
+        done
+      focus
+        intros; apply h.apply
+        rw [← a.2]
+        simp at *
+        auto )
+
+@[simp]
+theorem size_unshare (ar : SubarrayQ α) :
+  ar.unshare.size = ar.size := sorry
+
+def set (ar : SubarrayQ α) : Fin ar.size → α → SubarrayQ α :=
+suffices Fin ar.unshare.size → α → SubarrayQ α
+  by simp at this; assumption
+match ar.unshare with
+| ⟨n, ar⟩ => λ i : Fin n =>
+Quot.liftOn ar
+  (λ ar a => ⟨n, Quot.mk _ $ ar.set i a⟩)
+  (by intros a b h; apply funext; intros x; simp;
+      apply congrArg; apply Quot.sound; intro i;
+      simp; split <;> auto )
+
+end SubarrayQ
+
 
 structure Buffer (m α) where
 mkImpl ::
@@ -188,7 +699,7 @@ def mkFilled (x : α) : Buffer n α :=
 
 def zipWith (f : α → β → γ)
   (b₀ : Buffer n α) (b₁ : Buffer n β) : Buffer n γ :=
-⟨ b₀.cells.zipWith b₁.cells f, by simp [Buffer.Hsize]; refl ⟩
+⟨ b₀.cells.zipWith b₁.cells f, by simp [Buffer.Hsize] ⟩
 
 end Buffer
 

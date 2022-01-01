@@ -102,6 +102,10 @@ theorem add_sub_cancel {x y : Nat} :
   rw [Nat.add_comm, ← add_sub_assoc, Nat.sub_self, Nat.add_zero]
   refl
 
+theorem le_of_not_gt {x y : Nat} (h : ¬ y < x) : x ≤ y := by
+byContradiction h;
+cases (Nat.lt_or_ge y x) <;> contradiction
+
 theorem min_lt_min_l {x x' y y' : Nat}
   (Hx : x < x')
   (Hy : y < y') :
@@ -112,6 +116,20 @@ split <;> split <;> try assumption
 next h₀ _ =>
   have h₀ : y < x := Nat.gt_of_not_le h₀
   apply Nat.lt_trans <;> assumption
+
+
+
+theorem max_lt_max {x x' y y' : Nat}
+  (Hx : x < x')
+  (Hy : y < y') :
+  max x y < max x' y' := by
+simp [max]
+split <;> split <;> try assumption
+focus
+  apply Nat.lt_of_lt_of_le Hx
+  auto [Nat.le_of_not_gt]
+focus
+  trans y' <;> assumption
 
 @[simp]
 theorem succ_le_succ_iff {p q : Nat} :
@@ -282,6 +300,7 @@ rw [min_comm]; apply min_le_l
     . auto
     . simp; auto
 
+
 @[simp] theorem min_eq_iff_le_r : min x y = y ↔ y ≤ x := by
   rw [min_comm, min_eq_iff_le_l]; refl
 
@@ -295,6 +314,40 @@ rw [min_comm]; apply min_le_l
 
 @[simp] theorem max_eq_iff_le_r : max x y = y ↔ x ≤ y := by
   rw [max_comm, max_eq_iff_le_l]; refl
+
+
+@[simp]
+theorem min_self : min x x = x := by
+rw [min_eq_iff_le_r]; refl
+
+@[simp]
+theorem max_self : max x x = x := by
+rw [max_eq_iff_le_r]; refl
+
+@[simp]
+theorem lt_min_iff :
+  x < min y z ↔ x < y ∧ x < z := by
+constructor
+focus
+  intros h; constructor
+  . apply Nat.lt_of_lt_of_le h; auto
+  . apply Nat.lt_of_lt_of_le h; auto
+focus
+  intros h; cases h with | intro h₀ h₁ =>
+  rw [← min_self (x := x)]
+  apply min_lt_min_l <;> assumption
+
+@[simp]
+theorem lt_max_iff :
+  max x y < z ↔ x < z ∧ y < z := by
+constructor
+focus
+  intros h; constructor
+  <;> apply Nat.lt_of_le_of_lt _ h <;> auto
+focus
+  intros h; cases h with | intro h₀ h₁ =>
+  rw [← max_self (x := z)]
+  apply max_lt_max <;> assumption
 
 @[simp]
 theorem max_add {p q₀ q₁ : Nat} :
