@@ -48,11 +48,11 @@ macro_rules
 | `(tactic| ext $xs) =>
   `(tactic| extOrSkip $xs)
 
--- syntax "iterate" num tactic : tactic
--- macro_rules
--- | `(tactic| iterate 0 $tac) => `(tactic| skip)
--- | `(tactic| iterate $n $tac) => `(tactic| $tac; iterate $(elabTerm n-1) $tac)
+syntax "change" term "with" term : tactic
 
+
+macro "change" t:term "with" t':term : tactic =>
+  `(tactic| have H : $t = $t' := rfl; rw [H]; clear H )
 
 namespace Lean.Elab.Tactic
 
