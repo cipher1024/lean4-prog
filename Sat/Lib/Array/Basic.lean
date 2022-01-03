@@ -1,7 +1,11 @@
 
 import Sat.Lib.Nat
+import Sat.Lib.List.Basic
 
 namespace Array
+
+instance : Functor Array where
+  map := Array.map
 
 @[inline]
 def foldlIdx (ar : Array α) (f : Nat → α → β → β) (x₀ : β) : β :=
@@ -99,6 +103,8 @@ simp at this; auto
 
 end foldlM_sim
 
+section foldl_sim
+
 variable (f : β → α → β) (g : γ → α → γ)
 variable (x₀ : β) (y₀ : γ) (h : β → γ)
 variable (SIM : β → γ → Prop)
@@ -132,6 +138,29 @@ next n ih =>
   . rw [← H, ← ih] <;> assumption
   . refl
 
+end foldl_sim
+
+section foldl_ind
+
+variable (f : β → α → β)
+variable (x₀ : β)
+variable (M : β → Prop)
+
+theorem foldl_ind (ar : Array α)
+        (H' : M x₀)
+        (H : ∀ x a, M x →  M (f x a)) :
+  M (ar.foldl f x₀) := by
+let SIM := λ x y => x = y ∧ M x
+suffices SIM (foldl f x₀ ar 0 (size ar))
+             (foldl f x₀ ar 0 (size ar)) by
+  apply this.2
+apply foldl_sim (SIM := SIM)
+. constructor <;> auto
+intros x x' a; rintro1 ⟨rfl, h₁⟩
+auto
+
+end foldl_ind
+
 def mapA {F} [Applicative F] (f : α → F β) (ar : Array α) : F (Array β) :=
 ar.foldl (λ acc x => Array.push <$> acc <*> f x) (pure $ Array.mkEmpty ar.size)
 
@@ -164,11 +193,71 @@ theorem foldl_toArray {α β : Type _} (f : β → α → β) (ar : List α) x�
 theorem foldl_toList {α β : Type _} (f : β → α → β) (ar : Array α) x₀ :
   ar.toList.foldl f x₀ = ar.foldl f x₀ := sorry
 
+@[simp]
+theorem map_mkEmpty {α β} (f : α → β) :
+  f <$> mkEmpty n = mkEmpty n := rfl
+
+@[simp]
+theorem map_nil {α β} (f : α → β) :
+  f <$> #[] = #[] := rfl
+
+-- @[simp]
+theorem toList_eq_data {α} (ar : Array α) :
+  ar.toList = ar.data := by
+cases ar with | mk ar =>
+have : ar.length ≤ ar.length := by refl
+simp [toList, size, foldr, foldrM, *]
+split
+focus
+  simp only [size]
+  generalize (Eq.mpr_prop (eq_true this) True.intro) = h
+  let k := ar.length
+  rw [← @List.drop_length _ ar]
+  change List.length ar ≤ k at h
+  revert h
+  generalize ar.length = i; intros h
+  induction i <;> simp [foldrM.fold]
+  . refl
+  next i IH =>
+    have : ¬ (Nat.succ i == 0) = true := by
+      intros h; cases h
+    simp [*, get, List.cons_drop]
+    done
+focus
+  suffices ar.length = 0 by
+    simp at this; subst this
+    refl
+  apply Nat.le_antisymm _ (Nat.zero_le _)
+  auto
+
+-- @[simp]
+-- theorem map_push {α β} (f : α → β) xs x :
+--   f <$> Array.push xs x = Array.push (f <$> xs) (f x) := by
+-- cases xs; simp [push, (.<$>.), map, mapM]
+
+@[simp]
+theorem map_toArray {α β : Type _} (f : α → β) (l : List α) :
+  f <$> l.toArray = (f <$> l).toArray := by
+-- simp [List.toArray]
+-- generalize Har : @mkEmpty α (List.length l) = ar
+-- have := congrArg (Functor.map f) Har
+-- simp at this; rw [this]; clear Har this
+-- induction l generalizing ar
+--  <;> simp [List.toArrayAux, *] <;> refl
+sorry
+
 theorem mkEmpty_eq_mkEmpty {α n} m :
   mkEmpty (α := α) n = mkEmpty m := rfl
 
-end Array
+@[simp]
+theorem toList_mkEmpty {α n} :
+  toList (@mkEmpty α n) = [] := sorry
 
+@[simp]
+theorem toList_push {α} (ar : Array α) (x) :
+  toList (push ar x) = toList ar ++ [x] := sorry
+
+end Array
 
 namespace Subarray
 
@@ -482,6 +571,11 @@ theorem some_get_eq_get? i h :
   some (ar.get ⟨i, h⟩) = ar.get? i :=
 sorry
 
+@[simp]
+theorem size_append (ar₀ ar₁ : Array α) :
+  (ar₀ ++ ar₁).size = ar₀.size + ar₁.size :=
+sorry
+
 end Array
 
 namespace Util
@@ -657,7 +751,6 @@ Quot.liftOn ar
       simp; split <;> auto )
 
 end SubarrayQ
-
 
 structure Buffer (m α) where
 mkImpl ::

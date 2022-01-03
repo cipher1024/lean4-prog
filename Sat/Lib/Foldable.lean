@@ -1,6 +1,5 @@
 
 import Sat.Lib.Array.Basic
-import Sat.Lib.List.Basic
 import Sat.Lib.Monoid
 
 class Foldable (F : Type u → Type v) where
@@ -149,52 +148,3 @@ intros a xs n; cases n with
 simp [flip]; auto
 
 end LawfulFoldable
-
-instance : Foldable List where
-  foldl := List.foldl
-  toList := id
-  length := List.length
-
-instance : Foldable Array where
-  foldl := Array.foldl
-  toArray := id
-  toList := Array.toList
-  length := Array.size
-
-namespace Array
-
-
-end Array
-
-instance : LawfulFoldable Array where
-  foldl_sim :=  by
-    intros; apply Array.foldl_sim <;> auto
-  toArray_toList :=
-    by intros; simp [Array.toArray_toList, toList, toArray]
-  length_toList :=
-    by intros; simp [toList]; refl
-  foldl_toList := by
-    intros; simp [toList, foldl]
-
-namespace List
-
-variable {α β γ : Type u} {f : β → α → β} {g : γ → α → γ} {SIM : β → γ → Prop}
-variable  {x₀ y₀} (t : List α)
-
-theorem foldl_sim :
-    SIM x₀ y₀ →
-    (∀ a x y, SIM x y → SIM (f x a) (g y a)) →
-    SIM (foldl f x₀ t) (foldl g y₀ t) := by
-induction t generalizing x₀ y₀ <;> auto
-
-end List
-
-instance : LawfulFoldable List where
-  foldl_sim :=  by
-    intros; apply List.foldl_sim <;> auto
-  toArray_toList := by
-    intros; simp [toList, toArray]
-  length_toList := by
-    intros; simp [toList]; refl
-  foldl_toList := by
-    intros; simp [toList]; refl

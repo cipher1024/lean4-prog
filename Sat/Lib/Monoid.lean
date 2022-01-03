@@ -72,6 +72,26 @@ instance : Monoid (Endo α) where
   one_mul := rfl
   mul_assoc := rfl
 
+namespace End
+
+@[simp]
+theorem run_one :
+  @Endo.run α One.one x = x := rfl
+
+@[simp]
+theorem run_mk {α} x a :
+  @Endo.run α (Endo.mk x) a = x a := rfl
+
+@[simp]
+theorem run_mul_mk {α} (x : α → α) y a :
+  @Endo.run α (Endo.mk x * y) a = x (Endo.run y a) := rfl
+
+@[simp]
+theorem run_mul_mk' {α} x y a :
+  @Endo.run α (x * Endo.mk y) a = Endo.run x (y a) := rfl
+
+end End
+
 def Op (α : Sort u) := α
 def Op.mk (f : α) : Op α := f
 def Op.run (f : Op α) : α := f
@@ -82,6 +102,22 @@ instance [Monoid α] : Monoid (Op α) where
   mul_one := @Monoid.one_mul α _
   one_mul := @Monoid.mul_one α _
   mul_assoc {x y z} := @Monoid.mul_assoc α _ z y x |>.symm
+
+namespace Op
+
+@[simp]
+theorem Op.run_mk [Monoid α] (x : α) :
+  Op.run (Op.mk x) = x := rfl
+
+@[simp]
+theorem Op.run_one [Monoid α] :
+  Op.run One.one = One.one (α := α) := rfl
+
+@[simp]
+theorem Op.run_mul [Monoid α] (x y : Op α) :
+  Op.run (x * y) = y.run * x.run := rfl
+
+end Op
 
 namespace Monoid
 

@@ -2,6 +2,7 @@
 import Sat.Lib.Attributes
 import Sat.Lib.Monoid
 import Sat.Tactics
+import Sat.Lib.Function
 
 namespace Functor
 variable {F} [Functor F] [LawfulFunctor F]
@@ -13,21 +14,21 @@ theorem map_id :
 ext; simp
 
 @[simp, functor]
-theorem map_comp' (f : α → β) (g : β → γ) :
-  map g ∘ map f = map (f := F) (g ∘ f) := by
-ext; simp [comp_map]
-
-@[simp, functor]
 theorem map_comp (f : α → β) (g : β → γ) :
   map g (map f x) = map (f := F) (g ∘ f) x := by
-simp [comp_map]
+rw [comp_map]
+
+@[simp, functor]
+theorem map_comp' (f : α → β) (g : β → γ) :
+  map g ∘ map f = map (f := F) (g ∘ f) := by
+ext; simp only [(.∘.),map_comp]
 
 end Functor
 
 namespace Applicative
 
 variable {α β}
-variable {F} [Applicative F] [LawfulApplicative F]
+variable {F : Type u → Type v} [Applicative F] [LawfulApplicative F]
 
 attribute [functor] seq_assoc pure_seq seq_pure
 
@@ -37,7 +38,7 @@ theorem pure_seq' (f : α → β) (x : F α) :
 by simp [pure_seq]
 
 @[simp, functor]
-theorem seq_map {α β γ : Type _}
+theorem seq_map {α β γ : Type u}
         {f : α → β} {x : F (β → γ)} {y : F α} :
   x <*> (f <$> y) = (.∘f) <$> x <*> y := by
 simp only [pure_seq']
@@ -46,7 +47,7 @@ simp only [seq_pure, pure_seq, Functor.map_comp]
 refl
 
 @[simp, functor]
-theorem map_seq {α β γ : Type _}
+theorem map_seq {α β γ : Type u}
         {f : β → γ} {x : F (α → β)} {y : F α} :
   f <$> (x <*> y) = (f∘.) <$> x <*> y := by
 simp only [pure_seq']
@@ -94,14 +95,6 @@ instance [Applicative F] [LawfulApplicative F] [Applicative G] [LawfulApplicativ
   seq_pure := by intros; simp [pure_seq, pure, Seq.seq, (.<$>.), (.∘.)]
   seq_assoc := by
     intros; simp [pure_seq, pure, comp_seq_def, (.<$>.), (.∘.), seq_assoc]
-    apply congr _ rfl
-    apply congrArg
-    simp [pure_seq, pure, comp_seq_def, (.<$>.), (.∘.), seq_assoc]
-    rw [pure_seq', pure_seq', seq_assoc]
-    apply congrFun; apply congrArg
-    simp [seq_assoc]
-    apply congrFun; apply congrArg
-    apply congrArg; refl
 
 end Comp
 
@@ -184,6 +177,53 @@ by simp [← pure_seq]; auto
 
 end ApplicativeRel
 
+namespace Functor
+
+variable {F} [Functor F] [LawfulFunctor F]
+variable {f : α → β}
+
+section LeftInv
+
+variable {g : β → α} (Hfg : LeftInv f g)
+
+theorem LeftInv_map : LeftInv (map (f:=F) f) (map g) := by
+simp [LeftInv, Hfg]
+
+end LeftInv
+
+section HasLeftInv
+
+variable (Hf : HasLeftInv f)
+
+theorem HasLeftInv_map : HasLeftInv (map (f:=F) f) := by
+obtain ⟨g, Hg⟩ from Hf
+exists map (f := F) g
+simp [LeftInv, Hg]
+
+end HasLeftInv
+
+section HasRightInv
+
+variable (Hf : HasRightInv f)
+
+theorem HasRightInv_map : HasRightInv (map (f:=F) f) := by
+obtain ⟨g, Hg⟩ from Hf
+exists map (f := F) g
+simp [RightInv, Hg]
+
+end HasRightInv
+
+section HasRightInv
+
+variable (Hf : HasLeftInv f)
+
+theorem Injective_map : Injective (map (f:=F) f) := by
+auto [Injective_of_HasLeftInv,HasLeftInv_map]
+
+end HasRightInv
+
+end Functor
+
 namespace ApplicativeHom
 
 variable {F G : Type u → Type _} [Applicative F] [Applicative G]
@@ -231,8 +271,6 @@ instance : Applicative (Op1 F) where
 
 variable [LawfulApplicative F]
 
--- set_option pp.explicit true
-
 theorem map_eq {α β : Type u} {f : α → β} (x : Op1 F α) :
   (f <$> x : Op1 F β) = (f <$> x : F β) := rfl
 
@@ -251,10 +289,65 @@ constructor <;> intros
 <;> simp [pure_eq, map_pure, pure_seq, seq_eq, seq_assoc, seqLeft_eq, seqRight_eq]
 admit
 admit
-rw [Applicative.map_seq, seq_assoc]
+rw [seq_assoc]
 simp only [← comp_map, (.∘.)]
 rw [Applicative.seq_map]
 apply congrFun; apply congrArg
 simp only [← comp_map, (.∘.)]
 
 end Op1
+
+namespace Const
+
+@[simp]
+theorem run_pure {α ω} [Monoid ω] x :
+  @Const.run ω α (pure x) = One.one := rfl
+
+@[simp]
+theorem run_seq {α β : Type _} {ω} [Monoid ω]
+        (x : Const ω (α → β)) (y : Unit → Const ω α) :
+  Const.run (Seq.seq x y) = Const.run x * Const.run (y ()) := rfl
+
+@[simp]
+theorem run_mk {α ω} x :
+  @Const.run ω α (Const.mk x) = x := rfl
+
+@[simp]
+theorem map_mk {α β ω} (f : α → β) x :
+  f <$> @Const.mk ω α x = Const.mk x := rfl
+
+@[simp]
+theorem run_map {α β ω} (f : α → β) x :
+  @Const.run ω β (f <$> x) = Const.run x := rfl
+
+end Const
+
+namespace Comp
+open Functor
+@[simp]
+theorem run_mk {F G : Type _ → Type _} (x : F (G α)) :
+  Comp.run (Comp.mk x) = x := rfl
+
+@[simp]
+theorem run_pure {F G} [Applicative F] [Applicative G] (x : α) :
+  Comp.run (pure x : Comp F G α) = pure (pure x) := rfl
+
+@[simp]
+theorem run_seq {α β : Type _} {F G} [Applicative F] [Applicative G]
+        (x : Comp F G (α → β)) y :
+  Comp.run (Seq.seq x y) =
+  Seq.seq ((.<*>.) <$> Comp.run x) (Comp.run ∘ y) := rfl
+
+@[simp]
+theorem run_map {α β : Type _} {F G} [Functor F] [Functor G]
+        (f : α → β) (x : Comp F G α) :
+  Comp.run (f <$> x) =
+  Functor.map f <$> (Comp.run x) := rfl
+
+@[simp]
+theorem map_mk {α β : Type _} {F G} [Functor F] [Functor G]
+        (f : α → β) (x : F (G α)) :
+  f <$> Comp.mk x =
+  Comp.mk (map f <$> x) := rfl
+
+end Comp

@@ -4,8 +4,8 @@ import Sat.Lib.Classical
 namespace Nat
 -- #check Nat.add_assoc
 
-attribute [auto] Nat.le_of_lt Nat.le_add_right
-attribute [simp] Nat.add_succ Nat.succ_sub_succ
+attribute [auto] Nat.le_of_lt Nat.le_add_right Nat.zero_le
+attribute [simp] Nat.add_succ Nat.succ_sub_succ Nat.lt_succ_self
 
 @[simp]
 theorem zero_sub (n : Nat) : 0 - n = 0 := by
@@ -96,12 +96,14 @@ theorem add_sub_assoc {x y z : Nat} :
       have h := Nat.le_of_succ_le_succ h
       simp [ih, h]
 
+@[simp]
 theorem add_sub_cancel {x y : Nat} :
   x ≤ y → x + (y - x) = y := by
   intros h; simp [add_sub_assoc, *]
   rw [Nat.add_comm, ← add_sub_assoc, Nat.sub_self, Nat.add_zero]
   refl
 
+@[auto]
 theorem le_of_not_gt {x y : Nat} (h : ¬ y < x) : x ≤ y := by
 byContradiction h;
 cases (Nat.lt_or_ge y x) <;> contradiction

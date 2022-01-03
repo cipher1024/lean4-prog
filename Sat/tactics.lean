@@ -20,6 +20,16 @@ instance : Reflexive (.→.) where
 instance : @Reflexive Nat LE.le where
   refl := Nat.le_refl
 
+macro "rintro1" t:term : tactic =>
+  `(tactic| intro x; match x with | $t:term => ?_)
+
+syntax "rintro" term,* : tactic
+
+macro_rules
+| `(tactic| rintro ) => `(tactic| skip)
+| `(tactic| rintro $t, $ts) =>
+  `(tactic| rintro1 $t; rintro $ts )
+
 macro "obtain " p:term " from " d:term : tactic =>
   `(tactic| match $d:term with | $p:term => ?_)
 
@@ -61,7 +71,7 @@ initialize registerTraceClass `substAll
 
 open Expr Lean.Meta
 -- #check or
-def applyUnifyAll (g : MVarId) (lmm : Expr) : MetaM (List MVarId) := do
+def applyUnifyAll (g : MVarId) (lmm : Expr) (allowMVars := false) : MetaM (List MVarId) := do
   trace[auto.lemmas]"try {lmm}"
   trace[auto.lemmas]"type: {(← inferType lmm)}"
   trace[auto.goal]"goal {(← inferType (mkMVar g))}"
@@ -70,8 +80,8 @@ def applyUnifyAll (g : MVarId) (lmm : Expr) : MetaM (List MVarId) := do
              trace[auto.apply.failure]"error: {e.toMessageData}"
              throw e
   trace[auto.lemmas]"{gs.length} new goals"
-  guard (← gs.allM λ v => do
-    (← inferType (← inferType (mkMVar v))).isProp)
+  guard (allowMVars ∨ (← gs.allM λ v => do
+    (← inferType (← inferType (mkMVar v))).isProp))
   return gs
 
 def tacRefl : TacticM Unit := do
@@ -295,6 +305,7 @@ open Lean.Elab.Tactic
 open Lean
 
 syntax (name := auto) "auto" : attr
+syntax (name := eauto) "eauto" : attr
 
 abbrev AutoExtension := SimpleScopedEnvExtension Name NameSet
 
@@ -392,21 +403,21 @@ initialize registerTraceClass `auto.lemmas
 
 open Lean
 
-def Meta.applyAuto (ns : Array Name) : SearchTacticM δ Unit :=
+def Meta.applyAuto (ns : Array Name) (allowMVars := false) : SearchTacticM δ Unit :=
 SearchTacticM.focus do
   let n ← SearchT.pick' ns
   traceM `auto.lemmas s!"Lemma: {n}"
   let mut lmm ← (mkConstWithFreshMVarLevels n : TacticM _)
   Lean.Elab.Term.synthesizeSyntheticMVars true
   lmm ← instantiateMVars lmm
-  liftMetaTactic (applyUnifyAll . lmm)
+  liftMetaTactic (applyUnifyAll . lmm allowMVars)
 
-def Meta.applyAssumption : SearchTacticM δ Unit := SearchTacticM.focus $ do
+def Meta.applyAssumption (allowMVars := false) : SearchTacticM δ Unit := SearchTacticM.focus $ do
   let x ← SearchT.pick' (← getLCtx).getFVarIds
   let lctx ← getLCtx
   guard (¬ (lctx.get! x).isAuxDecl)
   traceM `auto.lemmas s!"Hyp: {lctx.get! x |>.userName}"
-  liftMetaTactic (applyUnifyAll . (mkFVar x))
+  liftMetaTactic (applyUnifyAll . (mkFVar x) allowMVars)
 
 elab "#print" "auto_db" : command => do
   IO.println (← getAutoLemmas).toList
@@ -446,32 +457,48 @@ end HOrElse
 def withMainContext' (x : SearchTacticM δ α) : SearchTacticM δ α :=
 λ f => withMainContext (x f)
 
-def Meta.tacAutoStep (ns : Array Name) : SearchTacticM δ Unit :=
+def Meta.tacAutoStep (ns : Array Name) (allowMVars := false) : SearchTacticM δ Unit :=
 withMainContext' $
   Lean.Elab.Tactic.tacRefl <|>
   liftMetaMAtMain Meta.contradiction <|>
-  Meta.applyAssumption <|>
+  Meta.applyAssumption allowMVars <|>
   Meta.destructHyp <|>
   liftMetaTactic1 ((some ∘ Prod.snd) <$> intro1 .) <|>
   Meta.applyAuto ns
+  -- Meta.applyAuto ns allowMVars <|>
+  -- liftMetaTactic1 ((some ∘ Prod.snd) <$> intro1 .)
 
-def Meta.tacAuto (ns : Array Name) : SearchTacticM δ Unit :=
+def Meta.tacAuto (ns : Array Name) (allowMVars := false) : SearchTacticM δ Unit :=
 SearchTacticM.focusAndDone $
-iterate 10 <| Meta.tacAutoStep ns
+iterate 10 <| Meta.tacAutoStep ns allowMVars
 
 elab "destruct_hyp" : tactic => withMainContext Meta.destructHyp
 elab "auto" : tactic => do
   withMainContext (Meta.tacAuto (← getAutoList)).run
+elab "eauto" : tactic => do
+  withMainContext (Meta.tacAuto (← getAutoList) true).run
 elab "auto_step" : tactic => do
   withMainContext (Meta.tacAutoStep (← getAutoList)).run
 elab "apply_auto" : tactic => do
   withMainContext (Meta.applyAuto (← getAutoList)).run
 
+syntax "eauto" "[" ident,* "]" : tactic
 syntax "auto" "[" ident,* "]" : tactic
 
 elab "auto" "[" ids:ident,* "]" : tactic => do
   let ids ← getAutoList (← ids.getElems.mapM resolveGlobalConstNoOverload)
   withMainContext (Meta.tacAuto ids).run
+
+elab "eauto" "[" ids:ident,* "]" : tactic => do
+  let ids ← getAutoList (← ids.getElems.mapM resolveGlobalConstNoOverload)
+  withMainContext (Meta.tacAuto ids true).run
+
+syntax "change" term "at" ident : tactic
+
+elab "change" t:term "at" h:ident : tactic =>
+  withMainContext do
+    let h ← getFVarId h
+    liftMetaTactic1 (changeLocalDecl . h (← elabTerm t none))
 
 -- macro "auto" : tactic =>
 --   `(tactic|
