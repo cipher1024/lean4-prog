@@ -2,6 +2,7 @@ import Lean.Meta.Tactic.Split
 import Lean.Elab.Tactic.Basic
 import Lean.Elab.Tactic.Location
 import Lean.Elab.Command
+import Lean.PrettyPrinter
 
 import Sat.Lib.Array.Control
 
@@ -535,3 +536,34 @@ elab "change" t:term "at" h:ident : tactic =>
 --             | apply $h ; clear $h
 --             | apply swapHyp $h <;> clear $h
 --               )
+
+
+section Macros
+open Lean Syntax
+
+def Syntax.mkStringLit' (ref : Syntax) (s : String) : Syntax :=
+let pos := ref.getHeadInfo
+node pos strLitKind #[atom pos s]
+
+def Syntax.mkStringLit [Monad m] [MonadRef m] (s : String) : m Syntax := do
+let pos ← MonadRef.mkInfoFromRefPos
+return node pos strLitKind #[atom pos s]
+
+-- #check CoreM
+
+-- macro "dump!" t:term : term => do
+--     let t ← liftM <| Lean.PrettyPrinter.ppTerm t
+--     let out := toString t
+--     let outLit ← Syntax.mkStringLit out
+--     -- let outLit ← Lean.PrettyPrinter.delab _ _ outLit
+--     `($outLit ++ " = " ++ toString $t)
+
+elab "dump!" t:term : term =>
+  do
+    let out := toString (← Lean.PrettyPrinter.ppTerm t)
+    let outLit := Lean.mkStrLit (out ++ " = ")
+    let outLit ← Lean.PrettyPrinter.delab
+        (← getCurrNamespace)
+        (← getOpenDecls) outLit
+    Lean.Elab.Term.elabTerm (← `($outLit ++ toString $t) ) none
+end Macros
