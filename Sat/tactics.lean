@@ -1,7 +1,8 @@
-import Lean.Meta.Tactic.Split
+import Lean.Elab.Command
 import Lean.Elab.Tactic.Basic
 import Lean.Elab.Tactic.Location
-import Lean.Elab.Command
+import Lean.Elab.Tactic.Match
+import Lean.Meta.Tactic.Split
 import Lean.PrettyPrinter
 
 import Sat.Lib.Array.Control
@@ -9,11 +10,20 @@ import Sat.Lib.Array.Control
 class Reflexive (R : α → α → Prop) where
   refl x : R x x
 
+class Symmetric (R : α → α → Prop) where
+  symmetry {x y} : R x y → R y x
+
 instance : @Reflexive α (.=.) where
   refl _ := rfl
 
 instance : Reflexive (.↔.) where
   refl _ := Iff.rfl
+
+instance : @Symmetric α (.=.) where
+  symmetry := Eq.symm
+
+instance : Symmetric (.↔.) where
+  symmetry := Iff.symm
 
 instance : Reflexive (.→.) where
   refl _ := id
@@ -33,6 +43,36 @@ macro_rules
 
 macro "obtain " p:term " from " d:term : tactic =>
   `(tactic| match $d:term with | $p:term => ?_)
+
+namespace Lean.Elab.Tactic
+open Lean.Meta
+
+elab "obtain" "!" p:term " from " d:term : tactic =>
+  withMainContext do
+    let (e, mvarIds') ← elabTermWithHoles d none `specialize (allowNaturalHoles := true)
+    let h := e.getAppFn
+    if h.isFVar then
+      let localDecl ← getLocalDecl h.fvarId!
+      let mvarId ← assert (← getMainGoal) localDecl.userName (← inferType e).headBeta e
+      let (newHyp', mvarId) ← intro1P mvarId
+      let mvarId ← tryClear mvarId h.fvarId!
+      replaceMainGoal (mvarId :: mvarIds')
+      withMainContext do
+        let newHyp ← mkIdentFromRef
+            <| (← getLCtx).get! newHyp' |>.userName
+        let myMatch ←
+          `(tactic| match $newHyp:term with | $p => ?_ )
+        let stx ← getRef
+        withMacroExpansion stx myMatch
+          <| Lean.Elab.Tactic.evalMatch myMatch
+        liftMetaTactic1 <| (tryClear . newHyp')
+    else
+      throwError "'specialize' requires a term of the form `h x_1 .. x_n` where `h` appears in the local context"
+
+macro "obtain!" p:term " from " d:term : tactic =>
+  `(tactic| obtain ! $p from $d)
+
+end Lean.Elab.Tactic
 
 macro "left" : tactic =>
   `(tactic| apply Or.inl)
@@ -95,7 +135,23 @@ def tacRefl : TacticM Unit := do
     apply g reflLmm
   | _ =>
     trace[refl]"ctorName: {g.ctorName}"
-    throwError "Expection a reflexive relation: R x y"
+    let reflLmm ← mkConstWithFreshMVarLevels ``Reflexive.refl
+    liftMetaTactic (apply . reflLmm) <|>
+      throwError "Expection a reflexive relation: R x y"
+
+def tacSymm : TacticM Unit := do
+  let g := (← instantiateMVars (← getMainTarget)).consumeMData
+  match g with
+  | (app (app R x _) y _) => liftMetaTactic λ g => do
+    let cl ← mkAppOptM ``Symmetric #[none, R]
+    let inst ← synthInstance cl
+    let symmLmm ← mkAppOptM ``Symmetric.symmetry #[none, R, inst]
+    apply g symmLmm
+  | _ =>
+    trace[refl]"ctorName: {g.ctorName}"
+    let symmLmm ← mkConstWithFreshMVarLevels ``Symmetric.symmetry
+    liftMetaTactic (apply . symmLmm) <|>
+      throwError "Expection a symmetric relation: R x y"
 
 def tacSubstAll : TacticM Unit := do
   let lctx ← getLCtx
@@ -275,6 +331,7 @@ open Lean.Elab.Tactic
 elab "apply1" t:term : tactic =>
   withMainContext (do tacMyApply (← elabTerm t none))
 elab "refl" : tactic => withMainContext Lean.Elab.Tactic.tacRefl
+elab "symmetry" : tactic => withMainContext Lean.Elab.Tactic.tacSymm
 elab "substAll" : tactic => withMainContext Lean.Elab.Tactic.tacSubstAll
 
 macro "exfalso" : tactic =>
