@@ -1,6 +1,6 @@
-import Sat.Lib.Array.Basic
-import Sat.Lib.List.Instances
-import Sat.Lib.Traversable
+import Lib.Array.Basic
+import Lib.List.Instances
+import Lib.Traversable
 
 namespace Array
 

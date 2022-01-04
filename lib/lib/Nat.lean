@@ -1,8 +1,8 @@
-import Sat.Tactics
-import Sat.Lib.Classical
+
+import Lib.Tactic
+import Lib.Classical
 
 namespace Nat
--- #check Nat.add_assoc
 
 attribute [auto] Nat.le_of_lt Nat.le_add_right Nat.zero_le
 attribute [simp] Nat.add_succ Nat.succ_sub_succ Nat.lt_succ_self

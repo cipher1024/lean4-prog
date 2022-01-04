@@ -1,6 +1,6 @@
 
-import Sat.Lib.Nat
-import Sat.Lib.List.Basic
+import Lib.Nat
+import Lib.List.Basic
 
 namespace Array
 

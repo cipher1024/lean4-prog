@@ -1,12 +1,12 @@
 
-import Sat.Lib.Array.Basic
-import Sat.Lib.Prod
-import Sat.Lib.Profunctor
-import Sat.Lib.Foldable
-import Sat.Lib.Traversable
-import Sat.Lib.Equiv
-import Sat.Tactics
-import Sat.Quot
+import Lib.Array.Basic
+import Lib.Prod
+import Lib.Profunctor
+import Lib.Foldable
+import Lib.Traversable
+import Lib.Equiv
+import Lib.Tactic
+import Lib.Quot
 
 structure FoldImpl (α β : Type u) where
   γ : Type u

@@ -1,9 +1,9 @@
 
 import Sat.Advent.IO
-import Sat.Tactics
-import Sat.Lib.Array.Basic
-import Sat.Lib.Classical
-import Sat.Lib.Nat
+import Lib.Tactic
+import Lib.Array.Basic
+import Lib.Classical
+import Lib.Nat
 import Std.Data.HashMap
 
 def Dim := 5

@@ -5,7 +5,7 @@ import Lean.Elab.Tactic.Match
 import Lean.Meta.Tactic.Split
 import Lean.PrettyPrinter
 
-import Sat.Lib.Array.Control
+import Lib.Array.Control
 
 class Reflexive (R : α → α → Prop) where
   refl x : R x x

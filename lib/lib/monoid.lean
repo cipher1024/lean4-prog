@@ -61,6 +61,13 @@ instance : Monoid Nat where
   one_mul := @Nat.one_mul
   mul_assoc := @Nat.mul_assoc
 
+instance : AddMonoid Nat where
+  one := (0 : Nat)
+  mul := Nat.add
+  mul_one := @Nat.add_zero
+  one_mul := @Nat.zero_add
+  mul_assoc := @Nat.add_assoc
+
 def Endo (α : Sort u) := α → α
 def Endo.mk (f : α → α) : Endo α := f
 def Endo.run (f : Endo α) : α → α := f

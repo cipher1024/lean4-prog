@@ -8,6 +8,9 @@ def examples :=
 
 def inputFileName := "Sat/Advent/(>>>FILE_SANS<<<)_input.txt"
 
+initialize do
+  checkInput (>>>FILE_SANS<<<) inputFileName
+
 def parseInput (lines : Array String) : IO Unit := pure ()
 
 def main : IO Unit := do

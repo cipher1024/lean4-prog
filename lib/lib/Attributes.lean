@@ -1,4 +1,4 @@
-import Sat.Tactics
+import Lib.Tactic
 import Lean.Meta.Basic
 
 initialize functorSimpAttr : Lean.Meta.SimpExtension ←

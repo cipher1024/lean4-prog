@@ -1,5 +1,5 @@
 
-import Sat.Tactics
+import Lib.Tactic
 
 namespace List
 

@@ -1,8 +1,8 @@
 
-import Sat.Lib.Attributes
-import Sat.Lib.Monoid
-import Sat.Tactics
-import Sat.Lib.Function
+import Lib.Attributes
+import Lib.Function
+import Lib.Monoid
+import Lib.Tactic
 
 namespace Functor
 variable {F} [Functor F] [LawfulFunctor F]

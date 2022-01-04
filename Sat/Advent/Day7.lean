@@ -1,15 +1,12 @@
 
-import Sat.Lib.Nat
-import Sat.Lib.Array.Instances
-import Sat.Lib.Equiv
-import Sat.Lib.Fold
-import Sat.Lib.Traversable
-import Sat.Quot
-import Sat.Tactics
+import Lib.Nat
+import Lib.Array.Instances
+import Lib.Equiv
+import Lib.Fold
+import Lib.Traversable
+import Lib.Tactic
+import Lib.Quot
 import Sat.Advent.IO
-
--- (lean--version)
--- ("4" "0" "0-nightly-2021-12-05")
 
 section day7
 

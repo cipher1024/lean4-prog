@@ -1,5 +1,5 @@
 
-import Sat.Tactics
+import Lib.Tactic
 
 inductive EqvGen (R : α → α → Prop) : α → α → Prop :=
 | rfl {x} : EqvGen R x x

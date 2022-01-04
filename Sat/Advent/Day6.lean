@@ -1,4 +1,4 @@
-import Sat.Lib.Array.Basic
+import Lib.Array.Basic
 import Sat.Advent.IO
 import Sat.Advent.Day1
 

@@ -1,7 +1,7 @@
 
-import Sat.Lib.Array.Basic
-import Sat.Lib.Function
-import Sat.Lib.Monoid
+import Lib.Array.Basic
+import Lib.Function
+import Lib.Monoid
 
 class Foldable (F : Type u → Type v) where
   foldl {α β : Type u} (f : β → α → β) (x₀ : β) (t : F α) : β
@@ -18,6 +18,12 @@ variable {α : Type u}
 
 def foldMap [One m] [Mul m] (f : α → m) (x : F α) : m :=
 foldl (λ acc x => f x * acc) One.one x
+
+def sum [Zero α] [Add α] : F α → α :=
+foldl (.+.) Zero.zero
+
+def product [One α] [Mul α] : F α → α :=
+foldl (.*.) One.one
 
 end Foldable
 

@@ -1,6 +1,6 @@
 
-import Sat.Lib.Traversable
-import Sat.Lib.List.Basic
+import Lib.Traversable
+import Lib.List.Basic
 
 namespace List
 

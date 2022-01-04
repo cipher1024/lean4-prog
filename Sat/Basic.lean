@@ -1,7 +1,8 @@
+
 import Lean
+import Lean.Meta
 import Std.Data.HashMap
 import Std.Data.HashSet
-import Lean.Meta
 
 open Std
 

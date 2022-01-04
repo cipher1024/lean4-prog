@@ -6,7 +6,7 @@
 --   can we customize the simp attribute? Preprocessing?
 -- * structure / instance skeleton synthesis
 
-import Sat.Tactics
+import Lib.Tactic
 
 namespace category_theory
 

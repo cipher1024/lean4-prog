@@ -1,5 +1,5 @@
 
-import Sat.Tactics
+import Lib.Tactic
 
 namespace Prod
 variable {α α' β β'} (x y : α × β)

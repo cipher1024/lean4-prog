@@ -1,5 +1,5 @@
 
-import Sat.Tactics
+import Lib.Tactic
 
 def Injective (f : α → β) :=
 ∀ x y, f x = f y → x = y
