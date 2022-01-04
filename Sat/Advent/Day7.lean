@@ -45,13 +45,22 @@ Prod.snd <$> Fold.mk (0, 0)
   (λ (num, costAccum) n =>
     (num + n, costAccum + num))
 
+def quadCost : Fold Nat Nat :=
+(Prod.snd ∘ Prod.snd) <$> Fold.mk (0, 0, 0)
+  (λ (num, costAccum, totalCost) n =>
+    let num' := num + n
+    let costAccum' := costAccum + num'
+    let totalCost' := totalCost + costAccum'
+    (num', costAccum', totalCost'))
+
 def costUp : Array Nat → Array Nat :=
-linearCost.scanl
+quadCost.scanl
 -- scanl (λ n (num, costAccum) => (costAccum + num, (num + n, costAccum + num))) (0, 0)
 
 def costDown : Array Nat → Array Nat :=
-scanr (λ n (num, costAccum) => (costAccum + num, (num + n, costAccum + num)))
-  (0, 0)
+quadCost.scanr
+-- scanr (λ n (num, costAccum) => (costAccum + num, (num + n, costAccum + num)))
+--   (0, 0)
 
 def cost' (input : Array Nat) : Array Nat :=
   let counts := posToCount input
@@ -99,17 +108,30 @@ def inputFileName := "Sat/Advent/Day7_input.txt"
 
 -- #check Lean.MonadRef
 
+def splitCount (ar : Array Nat) : Array <| Array Nat :=
+Array.foldlIdx
+  ar
+  (λ i a acc =>
+    if a = 0 then acc
+    else acc.push <| Array.mkArray ar.size 0 |>.set! i a)
+  #[]
+
 def main : IO Unit := do
 let pos ← parseInput <| (← IO.FS.lines inputFileName).get! 0
 -- let pos ← parseInput examples
 let count ← posToCount pos
 -- IO.println <| pos.size
--- IO.println <| count
--- IO.println <| posToCount pos
 IO.println <| dump! minCost pos
+-- IO.println <| dump! count
+-- IO.println <| dump! splitCount count
+-- let count := splitCount count |>.get! 0
+-- IO.println <| dump! count
+-- IO.println <| posToCount pos
 -- IO.println <| dump! costUp count
 -- IO.println <| dump! costDown count
 -- IO.println <| dump! cost' pos
+
+-- #[1, 2, 3, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1]
 
 #eval main
 
