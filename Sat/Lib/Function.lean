@@ -107,5 +107,9 @@ theorem HasRightInv_iff_Surjective [Nonempty α] {f : α → β} :
 theorem flip_eq {α β γ} (f : α → β → γ) x y :
   flip f x y = f y x := rfl
 
+@[simp]
+theorem flip_flip {α β γ} (f : α → β → γ) :
+  flip (flip f) = f := rfl
+
 theorem comp_lam {α β γ} (f : α → β) (g : β → γ) :
   (g ∘ λ a => f a) = λ a => g (f a) := rfl

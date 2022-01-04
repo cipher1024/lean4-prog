@@ -98,15 +98,26 @@ refine' ⟨rel.flip Heq, _, _, _⟩
 
 end R
 
-def run {F} [Foldable F] : (f : FoldImpl α β) → (ar : F α) → β
+@[inline]
+def foldl {F} [Foldable F] : (f : FoldImpl α β) → (ar : F α) → β
 | ⟨γ, x₀, f, out⟩, ar => out <| Foldable.foldl f x₀ ar
 
+@[inline]
 def scanl {F} [Traversable F] : (f : FoldImpl α β) → (ar : F α) → F β
 | ⟨γ, x₀, f, out⟩, ar => _root_.scanl (λ a y => (out y, f y a)) x₀ ar
 
+@[inline]
 def accuml {F} [Traversable F] : (f : FoldImpl α β) → (ar : F α) → F β × β
 | ⟨γ, x₀, f, out⟩, ar =>
   Prod.map id out $ _root_.accuml (λ a y => (out y, f y a)) x₀ ar
+
+@[inline]
+def foldr {F} [Foldable F] : (f : FoldImpl α β) → (ar : F α) → β
+| ⟨γ, x₀, f, out⟩, ar => out <| Foldable.foldr (flip f) x₀ ar
+
+def accumr {F} [Traversable F] : (f : FoldImpl α β) → (ar : F α) → F β × β
+| ⟨γ, x₀, f, out⟩, ar =>
+  Prod.map id out $ _root_.accumr (λ a y => (out y, f y a)) x₀ ar
 
 instance : Functor (FoldImpl α) where
   map f x := { x with out := f ∘ x.out }
@@ -175,13 +186,22 @@ instance : LawfulProfunctor Fold where
     cases x using Quot.ind; simp [dimap]
     simp [Fold.dimap, LawfulProfunctor.dimap_comp]
 
-def run {F} [Foldable F] [LawfulFoldable F]
+def foldl {F} [Foldable F] [LawfulFoldable F]
     (f : Fold α β) (ar : F α) : β :=
-Quot.liftOn f (FoldImpl.run . ar) $ by
-  intros x y H; cases H; simp [FoldImpl.run]
+Quot.liftOn f (FoldImpl.foldl . ar) $ by
+  intros x y H; cases H; simp [FoldImpl.foldl]
   next h₀ h₁ H =>
     apply H
     apply LawfulFoldable.foldl_sim <;> auto
+
+def foldr {F} [Foldable F] [LawfulFoldable F]
+    (f : Fold α β) (ar : F α) : β :=
+Quot.liftOn f (FoldImpl.foldr . ar) $ by
+  intros x y H; cases H; simp [FoldImpl.foldr]
+  next h₀ h₁ H =>
+    apply H
+    apply LawfulFoldable.foldr_sim <;> auto
+
 open Traversable LawfulTraversable
 
 section scanl
@@ -213,6 +233,27 @@ def scanl_SIM :
       apply (h₁ _ _ _).2
       apply (h₀ _ _ _).2; auto
 
+def scanr_SIM :
+    ApplicativeRel (Op1 (StateM σ)) (Op1 (StateM σ')) where
+  R a b := ∀ x y, SIM x y →
+      (a.run.run x).1 = (b.run.run y).1 ∧
+      SIM (a.run.run x).2 (b.run.run y).2
+  R_pure := by
+    intros; simp [pure, StateT.pure, StateT.run]; auto
+  R_seq := by
+    intros _ _ _ _ _ _ h₀ h₁ x y Hxy; constructor
+    focus
+      simp
+      apply congr
+      . apply (h₀ _ _ _).1;
+        apply (h₁ _ _ _).2; auto
+      . apply (h₁ _ _ _).1; auto
+    focus
+      simp
+      apply (h₀ _ _ _).2
+      apply (h₁ _ _ _).2
+      auto
+
 end SIM
 
 def scanl (f : Fold α β) (ar : F α) : F β :=
@@ -238,6 +279,23 @@ Quot.liftOn f (FoldImpl.accuml . ar) $ by
      <;> apply (traverse_sim (R := R) _ _ _ _ _ _ _).2
      <;> auto
 
+def accumr (f : Fold α β) (ar : F α) : F β × β :=
+Quot.liftOn f (FoldImpl.accumr . ar) $ by
+  intros a b h; cases h; next SIM h₀ h₁ h₂ =>
+  next σ σ' x₀ y₀ f g out out' =>
+  simp [FoldImpl.accumr, _root_.accumr, ← traverse_eq_mapM]
+  let R := scanr_SIM SIM
+  -- apply Prod.eta
+  apply Prod.eta <;> simp
+  . apply (traverse_sim (R := R) _ _ _ _ _ _ _).1
+     <;> auto
+  . apply h₂
+     <;> apply (traverse_sim (R := R) _ _ _ _ _ _ _).2
+     <;> auto
+
+def scanr (f : Fold α β) (ar : F α) : F β :=
+accumr f ar |>.1
+
 end scanl
 
 def mk (x₀ : α) (f : α → β → α) : Fold β α :=
@@ -245,7 +303,7 @@ Quot.mk _ $ FoldImpl.mk _ x₀ f id
 
 def map (f : α → β) (x : Fold σ α) : Fold σ β :=
 x.liftOn (Quot.mk _ ∘ Functor.map f) $ by
-  intros x y H; cases H; simp [FoldImpl.run]
+  intros x y H; cases H; simp [FoldImpl.foldl]
   apply Quot.sound; simp [(.<$>.)]
   next Heq h₀ H =>
   refine' ⟨_, Heq, _, _⟩

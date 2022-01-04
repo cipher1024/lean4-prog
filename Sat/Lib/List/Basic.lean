@@ -75,4 +75,23 @@ theorem length_eq_zero (xs : List α) :
   xs.length = 0 ↔ xs = [] := by
 cases xs <;> simp [length, Nat.add_one]
 
+@[simp]
+theorem foldl_reverse (xs : List α) (f : β → α → β) :
+  xs.reverse.foldl f x₀ = xs.foldr (flip f) x₀ := by
+induction xs <;> simp [foldl, foldr, *]; refl
+
+end List
+
+namespace List
+
+variable {α β γ : Type u} {f : β → α → β} {g : γ → α → γ}
+variable {SIM : β → γ → Prop}
+variable {x₀ y₀} (t : List α)
+
+theorem foldl_sim :
+    SIM x₀ y₀ →
+    (∀ a x y, SIM x y → SIM (f x a) (g y a)) →
+    SIM (foldl f x₀ t) (foldl g y₀ t) := by
+induction t generalizing x₀ y₀ <;> auto
+
 end List

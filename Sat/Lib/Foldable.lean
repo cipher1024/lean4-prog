@@ -1,9 +1,11 @@
 
 import Sat.Lib.Array.Basic
+import Sat.Lib.Function
 import Sat.Lib.Monoid
 
 class Foldable (F : Type u → Type v) where
   foldl {α β : Type u} (f : β → α → β) (x₀ : β) (t : F α) : β
+  foldr {α β : Type u} (f : α → β → β) (x₀ : β) (t : F α) : β
   toList {α} (x : F α) : List α := foldl (flip (.::.)) [] x |>.reverse
   toArray {α} (x : F α) : Array α := toList x |>.toArray
   length {α} (x : F α) : Nat :=
@@ -53,6 +55,9 @@ class LawfulFoldable (F : Type u → Type v) [Foldable F] where
     SIM x₀ y₀ →
     (∀ a x y, SIM x y → SIM (f x a) (g y a)) →
     SIM (foldl f x₀ t) (foldl g y₀ t)
+  foldr_eq_foldMap {α β} (f : α → β → β) (x : F α) (x₀ : β) :
+    foldr f x₀ x =
+    (foldMap (λ x => Op.mk $ Endo.mk (f x)) x).run.run x₀
   toArray_toList {α} (x : F α) : (toList x).toArray = toArray x
     -- by apply Reflexive.refl
   length_toList {α} (x : F α) : (toList x).length = length x
@@ -146,5 +151,44 @@ apply foldl_sim (SIM := R)
 intros a xs n; cases n with
   | up n =>
 simp [flip]; auto
+
+theorem foldl_eq_foldMap (f : β → α → β) (x₀ : β) (x : F α) :
+  foldl f x₀ x = (foldMap (λ a => Endo.mk (f . a)) x).run x₀ := by
+  intros; simp [foldMap]
+  let g := (fun acc x => Endo.mk (λ a => f a x) * acc)
+  symmetry
+  apply foldl_hom (h := λ x => Endo.run x x₀) (f := g) (g := f)
+  . refl
+  intros; simp
+
+theorem foldr_toList
+  (f : α → β → β) (x₀ : β) (x : F α) :
+  List.foldr f x₀ (toList x) = foldr f x₀ x := by
+rw [← flip_flip f, ← List.foldl_reverse, foldr_eq_foldMap]
+simp only [foldMap]
+rw [← foldl_toList]
+symmetry
+generalize toList x = l
+rw [flip_flip]
+have : ∀ x y : β, x = Endo.run (Op.run one) y → x = y :=
+  by auto
+apply this; clear this
+generalize one (α := Op (Endo β)) = k
+induction l generalizing k
+ <;> simp [List.foldl, *]
+
+theorem foldr_eq_foldl_reverse_toList
+  (f : α → β → β) (x₀ : β) (x : F α) :
+  foldr f x₀ x = List.foldl (flip f) x₀ (toList x).reverse := by
+simp [← foldr_toList]
+
+theorem foldr_sim {SIM : β → γ → Prop}
+        {f : α → β → β} {g : α → γ → γ}
+        {x₀ : β} {y₀ : γ} {x : F α}
+        (H₀ : SIM x₀ y₀)
+        (Hstep : ∀ x y y', SIM y y' → SIM (f x y) (g x y')) :
+  SIM (foldr f x₀ x) (foldr g y₀ x) := by
+repeat rw [foldr_eq_foldl_reverse_toList]
+auto [List.foldl_sim]
 
 end LawfulFoldable

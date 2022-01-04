@@ -9,18 +9,23 @@ instance : Traversable List where
   traverse := List.mapA
   mapM := List.mapM
   foldl := List.foldl
+  foldr := List.foldr
   toList := id
   length := List.length
 
-variable {α β γ : Type u} {f : β → α → β} {g : γ → α → γ}
-variable {SIM : β → γ → Prop}
-variable {x₀ y₀} (t : List α)
+@[simp]
+theorem foldMap_nil [Monoid ω] (f : α → ω) :
+  Foldable.foldMap f [] = One.one := rfl
 
-theorem foldl_sim :
-    SIM x₀ y₀ →
-    (∀ a x y, SIM x y → SIM (f x a) (g y a)) →
-    SIM (foldl f x₀ t) (foldl g y₀ t) := by
-induction t generalizing x₀ y₀ <;> auto
+@[simp]
+theorem foldMap_cons [Monoid ω] (f : α → ω) x xs :
+  Foldable.foldMap f (x :: xs) =
+  Foldable.foldMap f xs * f x := by
+simp [Foldable.foldMap, Foldable.foldl, foldl]
+symmetry
+apply foldl_sim (SIM := (. * f x = .))
+. simp
+intros; simp [*]
 
 instance : LawfulFoldable List where
   foldl_sim :=  by
@@ -30,6 +35,10 @@ instance : LawfulFoldable List where
     intros; simp [Array.toList]; refl
   foldl_toList := by
     intros; simp [Array.toList]; refl
+  foldr_eq_foldMap := by
+    intros; simp [Foldable.foldr]
+    next f x x₀ =>
+    induction x generalizing x₀ <;> simp [foldr, *]
 
 open Traversable
 instance : LawfulTraversable List where

@@ -5,9 +5,11 @@ import Sat.Lib.Traversable
 namespace Array
 
 instance : Foldable Array where
+  foldr := Array.foldr
   foldl := Array.foldl
   toArray := id
   toList := Array.toList
+  length := Array.size
 
 instance : Traversable Array where
   map := Array.map
@@ -50,6 +52,7 @@ instance : LawfulFoldable Array where
     by intros; simp [toList]; sorry
   foldl_toList := by
     intros; simp [toList, foldl]; sorry
+  foldr_eq_foldMap := sorry
 
 instance : LawfulFunctor Array := sorry
 

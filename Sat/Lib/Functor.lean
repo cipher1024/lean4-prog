@@ -263,37 +263,57 @@ constructor <;> intros
 
 
 variable {F} [Applicative F]
+-- set_option pp.explicit true
 
 instance : Applicative (Op1 F) where
   pure := pure (f := F)
   seq f x := ((λ x f => f x) <$> x () <*> f : F _)
   map := Functor.map (f := F)
-
+-- #print instApplicativeOp1
 variable [LawfulApplicative F]
 
+@[simp]
 theorem map_eq {α β : Type u} {f : α → β} (x : Op1 F α) :
-  (f <$> x : Op1 F β) = (f <$> x : F β) := rfl
+  (Op1.run $ f <$> x) = (f <$> Op1.run x) := rfl
 
+@[simp]
 theorem pure_eq {α : Type u} (x : α) :
-  (pure x : Op1 F α) = (pure x : F α) := rfl
+  (@Op1.run F _ $ pure x) = (pure x) := rfl
 
-theorem seq_eq {α β : Type u} (f : Op1 F (α → β)) (x : Op1 F α) :
-  (f <*> x : Op1 F β) = ((λ x f => f x) <$> x <*> f : F β) := rfl
+@[simp]
+theorem seq_eq {α β : Type u} (f : Op1 F (α → β))
+        (x : Unit → Op1 F α) :
+  Op1.run (Seq.seq f x) =
+  ((λ x f => f x) <$> Op1.run (x ()) <*> Op1.run f) := rfl
+
+@[simp]
+protected theorem seqLeft_eq {α β : Type u} (f : Op1 F β)
+        (x : Unit → Op1 F α) :
+  Op1.run (SeqLeft.seqLeft f x) =
+  SeqRight.seqRight (run $ x ()) (λ _ => run f)  := by
+change SeqLeft.seqLeft f x
+  with Seq.seq (Function.const _ <$> f) x
+simp only [seq_eq, map_eq, (.∘.), Function.const,
+           seqRight_eq, Applicative.seq_map, Functor.map_comp]
+refl
+
+@[simp]
+protected theorem seqRight_eq {α β : Type u} (f : Op1 F β)
+        (x : Unit → Op1 F α) :
+  Op1.run (SeqRight.seqRight f x) =
+  SeqLeft.seqLeft (run $ x ()) (λ _ => run f)  := by
+change SeqRight.seqRight f x
+  with Seq.seq (Function.const _ id <$> f) x
+simp only [seq_eq, map_eq, (.∘.), Function.const,
+           seqLeft_eq, Applicative.seq_map, Functor.map_comp]
+refl
+
+theorem ext (x y : Op1 F α) : x.run = y.run → x = y := id
 
 instance : LawfulApplicative (Op1 F) := by
--- have : LawfulFunctor (Op1 F) := inferInstanceAs (LawfulFunctor F)
-constructor <;> intros
-<;> simp [Function.const, seq_eq, flip, ← seqLeft_eq, ← seqRight_eq,
-          seq_pure, pure_seq, pure_eq, map_pure, map_eq, (.∘.)]
-<;> try refl
-<;> simp [pure_eq, map_pure, pure_seq, seq_eq, seq_assoc, seqLeft_eq, seqRight_eq]
-admit
-admit
-rw [seq_assoc]
-simp only [← comp_map, (.∘.)]
-rw [Applicative.seq_map]
-apply congrFun; apply congrArg
-simp only [← comp_map, (.∘.)]
+constructor <;> intros <;> apply Op1.ext
+<;> simp [seqLeft_eq, seqRight_eq, pure_seq, seq_assoc]
+<;> refl
 
 end Op1
 

@@ -123,6 +123,8 @@ variable (HmapConst : ∀ {α β} (x : T₁ α) (g : β),
                f (mapConst g x) = mapConst g (f x))
 variable (Hfoldl : ∀ {α β} (x : T₁ α) (g : β → α → β) x₀,
                foldl g x₀ x = foldl g x₀ (f x))
+variable (Hfoldr : ∀ {α β} (x : T₁ α) (g : α → β → β) x₀,
+               foldr g x₀ x = foldr g x₀ (f x))
 variable (Htraverse_f :
   ∀ {α β m} [Applicative m] (x : T₁ α) (g : α → m β),
                f <$> traverse g x = traverse g (f x))
@@ -146,6 +148,7 @@ def LawfulTraversable_of_hom : LawfulTraversable T₁ where
     apply Injective_of_LeftInv Hinj
     rw [← Id.run_map f]
     simp [Hmap, Htraverse_f, map_eq_traverse, -Id.map_eq]
+  foldr_eq_foldMap := foldr_eq_foldMap
   foldl_eq_traverse := by
     intros
     rw [Hfoldl, foldl_eq_traverse, ← Htraverse_f, Const.run_map]
