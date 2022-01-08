@@ -1,6 +1,6 @@
-import Lib.Array.Basic
-import Lib.List.Instances
-import Lib.Traversable
+import Lib.Data.Array.Basic
+import Lib.Data.List.Instances
+import Lib.Data.Traversable
 
 namespace Array
 

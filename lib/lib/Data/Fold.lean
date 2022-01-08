@@ -1,12 +1,13 @@
 
-import Lib.Array.Basic
-import Lib.Prod
-import Lib.Profunctor
-import Lib.Foldable
-import Lib.Traversable
+import Lib.Data.Array.Basic
+import Lib.Data.Foldable
+import Lib.Data.Prod
+import Lib.Data.Profunctor
+import Lib.Data.Quot
+import Lib.Data.Traversable
+
 import Lib.Equiv
 import Lib.Tactic
-import Lib.Quot
 
 structure FoldImpl (α β : Type u) where
   γ : Type u

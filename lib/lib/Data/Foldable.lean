@@ -1,7 +1,7 @@
 
-import Lib.Array.Basic
+import Lib.Data.Array.Basic
 import Lib.Function
-import Lib.Monoid
+import Lib.Data.Monoid
 
 class Foldable (F : Type u → Type v) where
   foldl {α β : Type u} (f : β → α → β) (x₀ : β) (t : F α) : β

@@ -1,6 +1,6 @@
 
-import Lib.Nat
-import Lib.List.Basic
+import Lib.Data.Nat
+import Lib.Data.List.Basic
 
 namespace Array
 

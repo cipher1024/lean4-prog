@@ -1,6 +1,6 @@
 
-import Lib.Traversable
-import Lib.List.Basic
+import Lib.Data.Traversable
+import Lib.Data.List.Basic
 
 namespace List
 
