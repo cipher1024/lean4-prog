@@ -66,6 +66,7 @@ mkImpl ::
   hash : UInt64
   hash_eq :
     hash = components.hash
+deriving Repr
 
 namespace ModuleName
 
@@ -255,7 +256,7 @@ open ImportToken
 partial def readWord (r : RawTokens) (i : Nat) (s : Substring) :
   RawTokens :=
 if i = s.bsize
-  then r.push <| space s
+  then r.push <| moduleName s
 else if isSpace <| s.get i then
   let lex₀ := s.extract 0 i
   let rest := s.extract i (s.stopPos - s.startPos)
@@ -357,43 +358,49 @@ variable (d : HashMap ModuleName ModuleName)
 
 partial def readComment
   (line : String) (commentOpen : Bool) : ImportLine' :=
-if commentOpen then
-  let rec loop (it : String.Iterator) : ImportLine' :=
-    if !it.hasNext then
-      ImportLine.comment it.s.toSubstring
-    else
-      let it' := it.next
-      if it.curr = '-' then
-        if it'.hasNext ∧ it'.curr = '/'
-          then
-            let it'' := it'.next
+if commentOpen ∨
+   line.isEmpty ∨
+   "import".isPrefixOf line ∨
+   " ".isPrefixOf line ∨
+   "--".isPrefixOf line then
+  if commentOpen then
+    let rec loop (it : String.Iterator) : ImportLine' :=
+      if !it.hasNext then
+        ImportLine.comment it.s.toSubstring
+      else
+        let it' := it.next
+        if it.curr = '-' then
+          if it'.hasNext ∧ it'.curr = '/'
+            then
+              let it'' := it'.next
+              let s := it.s.toSubstring
+              ImportLine.closeMultiline
+                (s.extract 0 it''.i)  (s.extract it''.i s.stopPos)
+            else loop it'
+        else loop it'
+    loop line.mkIterator
+  else
+    let rec loop' (it : String.Iterator) : ImportLine' :=
+      if !it.hasNext then
+        ImportLine.singleLine it.s.toSubstring "".toSubstring
+      else
+        let it' := it.next
+        if it.curr = '/' then
+          if it'.hasNext ∧ it'.curr = '-'
+            then
+              let s := it.s.toSubstring
+              ImportLine.openMultiline
+                (s.extract 0 it.i)  (s.extract it.i s.stopPos)
+            else loop' it'
+        else if it.curr = '-' then
+          if it'.hasNext ∧ it'.curr = '-' then
             let s := it.s.toSubstring
-            ImportLine.closeMultiline
-              (s.extract 0 it''.i)  (s.extract it''.i s.stopPos)
-          else loop it'
-      else loop it'
-  loop line.mkIterator
-else
-  let rec loop' (it : String.Iterator) : ImportLine' :=
-    if !it.hasNext then
-      ImportLine.singleLine it.s.toSubstring "".toSubstring
-    else
-      let it' := it.next
-      if it.curr = '/' then
-        if it'.hasNext ∧ it'.curr = '-'
-          then
-            let s := it.s.toSubstring
-            ImportLine.openMultiline
+            ImportLine.singleLine
               (s.extract 0 it.i)  (s.extract it.i s.stopPos)
           else loop' it'
-      else if it.curr = '-' then
-        if it'.hasNext ∧ it'.curr = '-' then
-          let s := it.s.toSubstring
-          ImportLine.singleLine
-            (s.extract 0 it.i)  (s.extract it.i s.stopPos)
         else loop' it'
-      else loop' it'
-  loop' line.mkIterator
+    loop' line.mkIterator
+else ImportLine.notImport
 
 def replaceModuleName (s : Substring) : Substring :=
 let mid := moduleName s.toString
@@ -411,14 +418,15 @@ let imp := imp.map ImportToken.splitLine
 let imp := imp.map <| Array.map <| ImportToken.map (replaceModuleName d)
 return imp.map <| _root_.join ∘ Array.map ImportToken.render
 
-def rewriteImports (file to : FilePath) : IO Unit := do
+def rewriteImports' (file to : FilePath) : IO Unit := do
   let lines ← IO.FS.lines file
-  let h ← IO.FS.Handle.mk to Mode.write false
+  let h ← IO.FS.Handle.mk to Mode.write
   let mut i := 0
   let mut comment := false
   for ln in lines do
     let x ← rewriteLine d ln comment
-    unless x.isImport do break
+    unless x.isImport do
+      break
     if comment then
       comment := ! x.closeComment
     else
@@ -428,33 +436,47 @@ def rewriteImports (file to : FilePath) : IO Unit := do
   for ln in lines[i:] do
     h.putStrLn ln
 
--- #exit
--- def foo : IO Unit := do
--- for i in range 3 do
---   IO.println i
+partial def copyFile (dst src : FilePath) : IO Unit := do
+let hsrc ← Handle.mk src Mode.read false
+let hdst ← Handle.mk dst Mode.write false
+let rec loop : IO Unit := do
+  let ln ← hsrc.getLine
+  if ln.isEmpty then return ()
+  else do
+    hdst.putStr ln
+    loop
+loop
+
+def moveFile (dst src : FilePath) : IO Unit := do
+copyFile dst src
+removeFile src
+
+def rewriteImports (file : FilePath) : IO Unit := do
+let to := file.withExtension "lean.tmp"
+rewriteImports' d file to
+moveFile file to
+
+end subst
+
+partial def gitRootAux (p : FilePath) : IO (Option FilePath) := do
+if (← isDir (p / ".git")) then return p
+else
+  match p.parent with
+  | some x => gitRootAux x
+  | none => return none
+
+def gitRoot : IO (Option FilePath) := do
+gitRootAux (← IO.currentDir)
 
 def main : IO Unit := do
-IO.println (← IO.currentDir)
-IO.println (← System.FilePath.pathExists path.path)
 let ls ← System.FilePath.readDir path.path
-IO.println <|
-  ls.filter (hasExt "lean" <| . |>.fileName)
-    |>.map (. |>.fileName)
 let mut i := 0
 let mut subst := Std.mkHashMap
 for (p@⟨root, fn⟩, _) in path do
   if hasExt "lean" fn then
     let m := p.toModuleName
     subst := subst.insert (removeDataPrefix m) m
-IO.println subst.toList
-    -- IO.println fn
--- for path in paths do
---   for (p@⟨root, fn⟩, m) in path do
---     if hasExt "lean" fn then
---       -- IO.println s!"{i}:{fn}"
---       -- IO.println s!"{i}:{root}:{fn}"
---       IO.println s!" · {p.importStmt false}"
---       i := i + 1
---     -- if i > 10 then return ()
-
-#eval main
+for (p, _) in path do
+  if hasExt "lean" p.fileName then
+    IO.println p.path
+    rewriteImports subst p.path
