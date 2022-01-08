@@ -114,7 +114,7 @@ if camelCase then
 else
   s!"import {dir.toModuleName |>.lowerCase}"
 
-def ofFileName (dir fname : FilePath) : DirEntry :=
+def ofFilePath (dir fname : FilePath) : DirEntry :=
 ⟨dir,
   fname.toString.drop dir.toString.length
     |>.dropWhile ('/' == .)⟩
@@ -166,7 +166,7 @@ instance [MonadLiftT IO m] :
          ForIn m DirEntry (DirEntry × Metadata) where
   forIn fp x f :=
     forIn fp.path x λ (fp', m) =>
-      f (DirEntry.ofFileName fp.root fp', m)
+      f (DirEntry.ofFilePath fp.root fp', m)
 
 open System.FilePath
 
@@ -245,7 +245,7 @@ traverse (m := Id) f
 
 abbrev RawTokens := Array <| ImportToken Substring
 
-abbrev isSpace (c : Char) : Prop := c = ' '
+abbrev isSpace (c : Char) : Prop := c.isWhitespace
 
 -- instance : DecidablePred isSpace :=
 -- λ c => inferInstanceAs
@@ -458,15 +458,203 @@ moveFile file to
 
 end subst
 
-partial def gitRootAux (p : FilePath) : IO (Option FilePath) := do
-if (← isDir (p / ".git")) then return p
+partial def findParentAux
+        (path : FilePath) (p : FilePath → IO Bool) :
+  IO (Option FilePath) := do
+if (← p path) then return path
 else
-  match p.parent with
-  | some x => gitRootAux x
+  match path.parent with
+  | some x => findParentAux x p
   | none => return none
 
-def gitRoot : IO (Option FilePath) := do
-gitRootAux (← IO.currentDir)
+def findParent (p : FilePath → IO Bool)
+    (path : Option FilePath := none) :
+  IO (Option FilePath) := do
+let path ← match path with
+           | none => IO.currentDir
+           | some p => normalize p
+findParentAux path p
+
+def gitRoot (path : Option FilePath := none) : IO (Option FilePath) := do
+findParent (λ p => isDir (p / ".git")) path
+
+def pathToLakefile (path : Option FilePath := none) : IO (Option FilePath) := do
+findParent (λ p => pathExists (p / "lakefile.lean")) path
+
+def lakeRoot (path : Option FilePath := none) : IO (Option FilePath) := OptionT.run do
+let p ← pathToLakefile path
+sorry
+
+namespace System.FilePath
+
+def replaceRoot (src dst fn : FilePath) : FilePath :=
+dst / (fn.toString.drop src.toString.length |>.dropWhile (. = '/))
+
+end System.FilePath
+
+namespace IO.FS.DirEntry
+
+def replaceRoot (src dst : FilePath) (fn : DirEntry) : FilePath :=
+System.FilePath.replaceRoot src dst fn.path
+
+end IO.FS.DirEntry
+
+/-- Return true iff `p` is a suffix of `s` -/
+def String.isSuffixOf (p : String) (s : String) : Bool :=
+  substrEq p 0 s (s.bsize - p.bsize) p.bsize
+
+namespace Move
+
+protected def usage : String := "
+Usage:
+  mv source target
+  mv source ... directory
+"
+
+inductive Cmd
+| rename (n1 n2 : FilePath)
+| move (fs : Array FilePath) (to : FilePath)
+
+open FilePath
+
+def mkModuleName (fn : FilePath) (root : Option FilePath := none) : IO ModuleName := do
+let some p ← match root with
+             | none => lakeRoot fn
+             | some p => p
+    | throw <| IO.userError s!"{fn} is not in a 'lake' project"
+return DirEntry.ofFilePath p fn |>.toModuleName
+
+def liftOpt (msg : String) : Option α → IO α
+| none => throw <| IO.userError msg
+| some x => pure x
+
+def getParent (fn : FilePath) : IO FilePath :=
+liftOpt s!"{fn} does not have a parent" fn.parent
+
+def getStem (fn : FilePath) : IO String :=
+liftOpt s!"{fn} does not have a parent" fn.fileStem
+
+def moduleNames (fn to : FilePath) (parent : Bool) :
+    IO (Array (ModuleName × ModuleName)) := do
+let fn'  ← normalize fn
+let to' ← normalize to
+let some root ← lakeRoot fn'
+  | throw <| IO.userError s!"lakefile not found for {fn}"
+let some to   ← lakeRoot to'
+  | throw <| IO.userError s!"lakefile not found for {to}"
+if (← isDir fn') then
+  let fn'' ← if parent then getParent fn' else fn'
+  let mut r := #[]
+  for ⟨p, _⟩ in fn' do
+    if hasExt "lean" p then
+      let p' := replaceRoot fn'' to' p
+      let m  ← mkModuleName p root
+      let m' ← mkModuleName p' to
+      r := r.push (m, m')
+  return r
+else
+  let s ← getStem fn'
+  let p' := if parent then to' / s else to'
+  let m  ← mkModuleName fn' root
+  let m' ← mkModuleName p' to
+  return #[(m, m')]
+
+def Cmd.renameMap : Cmd → IO (HashMap ModuleName ModuleName)
+| rename n1 n2 => do
+  let mut r := mkHashMap
+  for (m, m') in ← moduleNames n1 n2 (parent := false) do
+    r := r.insert m m'
+  return r
+| move fs to => do
+  let mut r := mkHashMap
+  for fn in fs do
+    for (m, m') in ← moduleNames fn to (parent := true) do
+      r := r.insert m m'
+  return r
+
+def checkFilePath (fn : String) : IO FilePath := do
+let fn := FilePath.mk fn
+unless ← pathExists fn do
+  throw <| IO.userError s!"'{fn}' is not a valid path"
+return fn
+
+def mkCmd (ar : Array String) : IO Cmd := do
+unless ar.size ≥ 2 do throw <| IO.userError Move.usage
+if ar.size > 2 then
+  let dir := ar.get! (ar.size - 1)
+  let srcs ← ar[:ar.size-1].toArray.mapM checkFilePath
+  let dir ←
+    if ← pathExists dir then
+      unless ← isDir dir do throw <| IO.userError Move.usage
+      pure <| FilePath.mk dir
+    else
+      let dir := FilePath.mk dir
+      createDirAll dir
+      pure dir
+  return Cmd.move srcs dir
+else
+  let src ← checkFilePath ar[0]
+  let dst := FilePath.mk ar[1]
+  if ← pathExists dst then
+    if dst.toString.isSuffixOf "/" ∧ (← isDir dst) then
+      return Cmd.move #[src] dst
+    else
+      throw <| IO.userError
+        s!"{dst} exists and cannot be replaced by {src}"
+  else
+    return Cmd.rename src dst
+
+end Move
+
+def parseCmdLine (args : Array String) : IO Move.Cmd :=
+if args.size > 0 ∧ args.get! 0 = "mv" then
+  Move.mkCmd args[1:]
+else
+  throw <| IO.userError Move.usage
+
+/--  -/
+def Move.Cmd.scope : Move.Cmd → IO (Bool × FilePath)
+| Move.Cmd.move fs to => do
+  let mut git ← gitRoot to
+  let mut lake ← lakeRoot to
+  unless lake.isSome do
+    throw <| IO.userError s!"Lake project not found for {to}"
+  for fn in fs do
+    match ← gitRoot (some fn) with
+    | some p => if git != some p then git := none
+    | none => git := none
+    match ← lakeRoot (some fn) with
+    | some p => if lake != some p then lake := none
+    | none => lake := none
+  match git, lake with
+  | some p, _ => return (true, p)
+  | none, some p => return (false, p)
+  | none, none =>
+    throw <| IO.userError s!"No common git or lake project found"
+| Move.Cmd.rename fn to => do
+  let fnGit ← gitRoot fn
+  let fnLake ← lakeRoot fn
+  let toGit ← gitRoot to
+  let toLake ← lakeRoot to
+  if fnGit.isSome ∧ fnGit == toGit then
+    return (true, fnGit.getD "")
+  if fnLake.isSome ∧ fnLake == toLake then
+    return (true, fnGit.getD "")
+  throw <| IO.userError s!"No common git or lake project found"
+
+def Cmd.run (args : Array String) : IO Unit := do
+let c ← parseCmdLine args
+let subst ← c.renameMap
+let (useGit, scope) ← c.scope
+for (p, _) in scope do
+  if hasExt "lean" p then
+    rewriteImports subst p
+if useGit then
+  discard <| IO.Process.output
+    { cmd := "git", args := args }
+else
+  discard <| IO.Process.output
+    { cmd := "mv", args := args[1:] }
 
 def main : IO Unit := do
 let ls ← System.FilePath.readDir path.path
