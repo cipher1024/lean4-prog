@@ -523,6 +523,9 @@ end IO.FS.DirEntry
 def String.isSuffixOf (p : String) (s : String) : Bool :=
   substrEq p 0 s (s.bsize - p.bsize) p.bsize
 
+def System.FilePath.isInvisible (p : FilePath) : Bool :=
+".".isPrefixOf <| p.fileStem |>.getD ""
+
 namespace Move
 
 protected def usage : String := "
@@ -566,7 +569,7 @@ if (← isDir fn') then
   let fn'' ← if parent then getParent fn' else fn'
   let mut r := #[]
   for ⟨p, _⟩ in fn' do
-    if hasExt "lean" p then
+    if hasExt "lean" p ∧ ¬ p.isInvisible then
       let p' := replaceRoot fn'' to' p
       let m  ← mkModuleName p root
       let m' ← mkModuleName p' to
@@ -731,10 +734,11 @@ if flags.traceSubst then
   for (m, m') in subst.toList do
     println!"  * {m.camelCase} := {m'.camelCase}"
 if !flags.dryRun then
-  for (p, _) in scope do
-    if hasExt "lean" p then
-      rewriteImports subst p
   discard <| IO.Process.output args
+  for (p, _) in scope do
+    if hasExt "lean" p ∧
+       ¬ p.isInvisible then
+      rewriteImports subst p
 
 def main (args : List String) : IO Unit := do
 try
