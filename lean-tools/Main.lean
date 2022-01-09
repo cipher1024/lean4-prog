@@ -116,8 +116,10 @@ else
 
 def ofFilePath (dir fname : FilePath) : DirEntry :=
 ⟨dir,
-  fname.toString.drop dir.toString.length
-    |>.dropWhile ('/' == .)⟩
+  let abs := dir.isAbsolute
+  let dir := dir.components.erase "."
+  let fname := fname.components.erase "."
+  String.intercalate "/" <| fname.drop dir.length⟩
 
 end IO.FS.DirEntry
 
@@ -462,6 +464,9 @@ moveFile file to
 
 end subst
 
+def absolute (fp : FilePath) : IO FilePath := do
+normalize ((← IO.currentDir) / fp)
+
 partial def findParentAux
         (path : FilePath) (p : FilePath → IO Bool) :
   IO (Option FilePath) := do
@@ -476,7 +481,7 @@ def findParent (p : FilePath → IO Bool)
   IO (Option FilePath) := do
 let path ← match path with
            | none => IO.currentDir
-           | some p => normalize p
+           | some p => absolute p
 findParentAux path p
 
 def gitRoot (path : Option FilePath := none) : IO (Option FilePath) := do
@@ -542,8 +547,8 @@ liftOpt s!"{fn} does not have a parent" fn.fileStem
 
 def moduleNames (fn to : FilePath) (parent : Bool) :
     IO (Array (ModuleName × ModuleName)) := do
-let fn'  ← normalize fn
-let to' ← normalize to
+let fn'  ← absolute fn
+let to' ← absolute to
 let some root ← lakeRoot fn'
   | throw <| IO.userError s!"lakefile not found for {fn}"
 let some to   ← lakeRoot to'
