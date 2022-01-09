@@ -582,6 +582,19 @@ else
   let m' ← mkModuleName p' to
   return #[(m, m')]
 
+def Cmd.dest : Cmd → FilePath
+| rename n1 n2 => n2
+| move n1 n2 => n2
+
+def Cmd.createPath (c : Cmd) : IO Unit := do
+if ¬ (← c.dest.pathExists) then
+  if hasExt "lean" c.dest then
+    let p ← liftOpt s!"{c.dest} does not have a parent"
+        <| c.dest.parent
+    createDirAll p
+  else
+    createDirAll c.dest
+
 def Cmd.renameMap : Cmd → IO (HashMap ModuleName ModuleName)
 | rename n1 n2 => do
   let mut r := mkHashMap
@@ -721,6 +734,7 @@ if useGit
 def Cmd.run (args : Array String) : IO Unit := do
 let (flags, c) ← parseCmdLine args
 let subst ← c.renameMap
+c.createPath
 let (useGit, scope) ← c.scope
 let args := c.args flags useGit
 if flags.traceCmd then
