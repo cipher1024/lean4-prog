@@ -424,9 +424,10 @@ let imp := imp.map ImportToken.splitLine
 let imp := imp.map <| Array.map <| ImportToken.map (replaceModuleName d)
 return imp.map <| _root_.join ∘ Array.map ImportToken.render
 
-def rewriteImports' (file to : FilePath) : IO Unit := do
+def rewriteImports' (file to : FilePath) : IO Bool := do
   let lines ← IO.FS.lines file
   let h ← IO.FS.Handle.mk to Mode.write
+  let mut changed := false
   let mut i := 0
   let mut comment := false
   for ln in lines do
@@ -437,10 +438,15 @@ def rewriteImports' (file to : FilePath) : IO Unit := do
       comment := ! x.closeComment
     else
       comment := x.openComment
-    h.putStrLn <| x.render
+    let out := x.render
+    changed := changed || (out != ln)
+    h.putStrLn out
     i := i + 1
-  for ln in lines[i:] do
-    h.putStrLn ln
+  if changed then
+    for ln in lines[i:] do
+      h.putStrLn ln
+    true
+  else false
 
 partial def copyFile (dst src : FilePath) : IO Unit := do
 let hsrc ← Handle.mk src Mode.read false
@@ -459,8 +465,11 @@ removeFile src
 
 def rewriteImports (file : FilePath) : IO Unit := do
 let to := file.withExtension "lean.tmp"
-rewriteImports' d file to
-moveFile file to
+let changed ← rewriteImports' d file to
+if changed then
+  moveFile file to
+else
+  removeFile to
 
 end subst
 
