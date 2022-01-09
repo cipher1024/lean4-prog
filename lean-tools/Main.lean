@@ -17,7 +17,6 @@ def get : ForInStep β → β
 | yield r => r
 | done r => r
 
-
 def dup : ForInStep β → ForInStep (ForInStep β)
 | yield r => yield <| yield r
 | done r => done <| done r
@@ -124,7 +123,10 @@ end IO.FS.DirEntry
 
 section visitDirs
 open System System.FilePath
-variable [Monad m] [MonadLiftT IO m]
+variable [Monad m] [MonadLiftT IO m] [MonadExcept ε m]
+
+def attempt (x : m α) : m (Option α) :=
+try some <$> x catch _ => return none
 
 @[specialize]
 partial def visitDir' [Inhabited β]
@@ -133,7 +135,8 @@ partial def visitDir' [Inhabited β]
                   ForInStep β →
                   m (ForInStep (ForInStep β))) :
   m (ForInStep (ForInStep β)) := do
-  let m ← liftM <| metadata path
+  let some m ← attempt <| liftM <| metadata path
+      | return b.dup
   let r ← f (path, m) b
   match r with
    | ForInStep.done r => return r.dup
@@ -157,13 +160,13 @@ return r.get.get
 end visitDirs
 open System IO.FS
 
-instance [MonadLiftT IO m] :
+instance [MonadLiftT IO m] [MonadExcept ε m] :
          ForIn m FilePath (FilePath × Metadata) where
   forIn fp x f :=
     let inst : Inhabited _ := ⟨ x ⟩
     visitDir fp x f
 
-instance [MonadLiftT IO m] :
+instance [MonadLiftT IO m] [MonadExcept ε m] :
          ForIn m DirEntry (DirEntry × Metadata) where
   forIn fp x f :=
     forIn fp.path x λ (fp', m) =>
