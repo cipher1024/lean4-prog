@@ -1,4 +1,5 @@
-
+import Lake.Config.Load
+import Lean.PrettyPrinter.Delaborator.Basic
 -- import Libffi.Ffi.Data.Char
 import Std.Data.HashMap
 -- import Lib.Traversable
@@ -483,12 +484,14 @@ findParent (λ p => pathExists (p / "lakefile.lean")) path
 
 def lakeRoot (path : Option FilePath := none) : IO (Option FilePath) := OptionT.run do
 let p ← pathToLakefile path
-sorry
+let cfg ← Lake.Package.load p []
+cfg.srcDir
 
 namespace System.FilePath
 
 def replaceRoot (src dst fn : FilePath) : FilePath :=
-dst / (fn.toString.drop src.toString.length |>.dropWhile (. = '/))
+dst / (fn.toString.drop src.toString.length |>.dropWhile
+        (pathSeparators.elem .))
 
 end System.FilePath
 
@@ -606,9 +609,52 @@ else
 
 end Move
 
-def parseCmdLine (args : Array String) : IO Move.Cmd :=
+abbrev CmdLineFlag (short : String) (long : Option String) (descr : String) := Bool
+
+structure Flags where
+  traceCmd :
+    CmdLineFlag "-c" none
+    "tracing: print command" := false
+  traceSubst :
+    CmdLineFlag "-s" none
+    "tracing: print module renaming" := false
+  traceRoot :
+    CmdLineFlag "-r" none
+    "tracing: print command" := false
+  dryRun :
+    CmdLineFlag "-d" none
+    "dry run: calculate parameter perform no action" := false
+  forward : Array String := #[]
+                           -- array of -f, -i, -n, -v, -k
+  deriving Repr, Inhabited
+
+partial def parseFlagsAux (fl : Flags) (ar : Subarray String) :
+  Flags × Array String :=
+if ar.start = ar.stop then
+  (fl, #[])
+else
+  let hd := ar.as.get! ar.start
+  if hd = "-c" then
+    parseFlagsAux { fl with traceCmd := true } ar.popFront
+  else if hd = "-s" then
+    parseFlagsAux { fl with traceSubst := true } ar.popFront
+  else if hd = "-r" then
+    parseFlagsAux { fl with traceRoot := true } ar.popFront
+  else if hd = "-d" then
+    parseFlagsAux { fl with dryRun := true } ar.popFront
+  else if #["-f", "-i", "-n", "-v", "-k"].elem hd then
+    parseFlagsAux
+      { fl with forward := fl.forward.push hd }
+      ar.popFront
+  else
+    (fl, ar)
+
+def parseFlags := parseFlagsAux {}
+
+def parseCmdLine (args : Array String) : IO (Flags × Move.Cmd) :=
 if args.size > 0 ∧ args.get! 0 = "mv" then
-  Move.mkCmd args[1:]
+  let (flags, args) := parseFlags args[1:]
+  (flags, .) <$> Move.mkCmd args
 else
   throw <| IO.userError Move.usage
 
@@ -642,29 +688,39 @@ def Move.Cmd.scope : Move.Cmd → IO (Bool × FilePath)
     return (true, fnGit.getD "")
   throw <| IO.userError s!"No common git or lake project found"
 
+def Move.Cmd.args (cmd : Move.Cmd) (opts : Flags)
+    (useGit : Bool) : IO.Process.SpawnArgs :=
+let args :=
+  match cmd with
+  | Move.Cmd.rename fn to => #[fn.toString, to.toString]
+  | Move.Cmd.move fs to => fs.push to |>.map ToString.toString
+if useGit
+  then { cmd := "git", args := #["mv"] ++ opts.forward ++ args }
+  else { cmd := "mv", args := opts.forward ++ args }
+
 def Cmd.run (args : Array String) : IO Unit := do
-let c ← parseCmdLine args
+let (flags, c) ← parseCmdLine args
 let subst ← c.renameMap
 let (useGit, scope) ← c.scope
-for (p, _) in scope do
-  if hasExt "lean" p then
-    rewriteImports subst p
-if useGit then
-  discard <| IO.Process.output
-    { cmd := "git", args := args }
-else
-  discard <| IO.Process.output
-    { cmd := "mv", args := args[1:] }
+let args := c.args flags useGit
+if flags.traceCmd then
+  let cmd := String.intercalate " "
+    <| args.cmd :: args.args.toList
+  println!"cmd: {cmd}"
+if flags.traceRoot then
+  println!"root: {scope}"
+if flags.traceSubst then
+  println!"substitution:"
+  for (m, m') in subst.toList do
+    println!"  * {m.camelCase} := {m'.camelCase}"
+if !flags.dryRun then
+  for (p, _) in scope do
+    if hasExt "lean" p then
+      rewriteImports subst p
+  discard <| IO.Process.output args
 
-def main : IO Unit := do
-let ls ← System.FilePath.readDir path.path
-let mut i := 0
-let mut subst := Std.mkHashMap
-for (p@⟨root, fn⟩, _) in path do
-  if hasExt "lean" fn then
-    let m := p.toModuleName
-    subst := subst.insert (removeDataPrefix m) m
-for (p, _) in path do
-  if hasExt "lean" p.fileName then
-    IO.println p.path
-    rewriteImports subst p.path
+def main (args : List String) : IO Unit := do
+try
+  Cmd.run args.toArray
+catch e =>
+  IO.eprintln e
