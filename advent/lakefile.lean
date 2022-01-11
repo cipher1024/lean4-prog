@@ -2,5 +2,5 @@ import Lake
 open Lake DSL
 
 package lib {
-  defaultFacet := PackageFacet.staticLib
+  defaultFacet := PackageFacet.oleans
 }

@@ -1,3 +1,3 @@
 
-import Lib.Traversable
-import Lib.Fold
+import Lib.Data.Traversable
+import Lib.Data.Fold

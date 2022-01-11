@@ -1,6 +1,6 @@
 
 import Lib.Tactic
-import Lib.Quot
+import Lib.Data.Quot
 import Sat.CategoryTheory
 
 open Nat

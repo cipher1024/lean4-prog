@@ -5,10 +5,13 @@ import Lean.Elab.Tactic.Match
 import Lean.Meta.Tactic.Split
 import Lean.PrettyPrinter
 
-import Lib.Array.Control
+import Lib.Data.Array.Control
 
 class Reflexive (R : α → α → Prop) where
   refl x : R x x
+
+@[extern "initialize_Lib_Tactic"]
+constant init : Nat → Nat
 
 class Symmetric (R : α → α → Prop) where
   symmetry {x y} : R x y → R y x

@@ -1,6 +1,6 @@
 
-import Sat.Advent.IO
-import Lib.Array.Basic
+import Advent.IO
+import Lib.Data.Array.Basic
 
 def measurements_ex : Array Nat :=
 #[199,

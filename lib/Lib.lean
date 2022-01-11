@@ -1,18 +1,17 @@
 
-import Lib.Traversable
-import Lib.Fold
-import Lib.Array
 -- import Lib.MySimp
 import Lib.Attributes
-import Lib.Nat
-import Lib.Prod
 import Lib.Classical
+import Lib.Data.Array
+import Lib.Data.Fold
+import Lib.Data.Fold
+import Lib.Data.Foldable
+import Lib.Data.Functor
+import Lib.Data.List
+import Lib.Data.Monoid
+import Lib.Data.Nat
+import Lib.Data.Prod
+import Lib.Data.Profunctor
+import Lib.Data.Traversable
 import Lib.Equiv
-import Lib.Profunctor
-import Lib.Fold
-import Lib.Foldable
-import Lib.Functor
 import Lib.Function
-import Lib.Monoid
-import Lib.List
-import Lib.Traversable
