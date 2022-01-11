@@ -3,7 +3,7 @@ open Lake DSL
 
 package sat {
   -- add configuration options here
-  defaultFacet := PackageFacet.oleans,
+  defaultFacet := PackageFacet.staticLib,
   dependencies := #[{
       name := `lib
       src :=  Source.path "lib" } ]
