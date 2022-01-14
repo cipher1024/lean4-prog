@@ -632,7 +632,7 @@ else
   let src ← checkFilePath ar[0]
   let dst := FilePath.mk ar[1]
   if ← pathExists dst then
-    if dst.toString.isSuffixOf "/" ∧ (← isDir dst) then
+    if "/".isSuffixOf dst.toString ∧ (← isDir dst) then
       return Cmd.move #[src] dst
     else
       throw <| IO.userError
