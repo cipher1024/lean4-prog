@@ -1,10 +1,10 @@
 -- TODO: generate point-free lemmas
 -- use registerSimpAttr to create simp rewrite sets
 
-import Lib.Function
-import Lib.Data.Functor
-import Lib.Data.Monoid
+import Lib.Algebra.Monoid
 import Lib.Data.Foldable
+import Lib.Data.Functor
+import Lib.Function
 
 class Traversable (T : Type u → Type u) extends Functor T, Foldable T where
   traverse {F : Type u → Type u} [Applicative F] (f : α → F β) : T α → F (T β)

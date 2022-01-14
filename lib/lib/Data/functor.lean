@@ -1,7 +1,7 @@
 
+import Lib.Algebra.Monoid
 import Lib.Attributes
 import Lib.Function
-import Lib.Data.Monoid
 import Lib.Tactic
 
 namespace Functor
