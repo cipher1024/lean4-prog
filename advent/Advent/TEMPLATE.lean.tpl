@@ -1,15 +1,15 @@
 
-import Sat.Advent.IO
+import Advent.IO
 
 namespace (>>>FILE_SANS<<<)
 
 def examples :=
 ""
 
-def inputFileName := "Sat/Advent/(>>>FILE_SANS<<<)_input.txt"
+def inputFileName := "Advent/(>>>FILE_SANS<<<)_input.txt"
 
 initialize do
-  checkInput (>>>FILE_SANS<<<) inputFileName
+  checkInput "(>>>FILE_SANS<<<)" inputFileName
 
 def parseInput (lines : Array String) : IO Unit := pure ()
 

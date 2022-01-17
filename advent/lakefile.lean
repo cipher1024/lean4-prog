@@ -1,6 +1,8 @@
 import Lake
 open Lake DSL
 
-package lib {
-  defaultFacet := PackageFacet.oleans
+package advent {
+  defaultFacet := PackageFacet.staticLib
+  dependencies :=
+    #[ { name := `lib, src := Source.path "../lib" } ]
 }

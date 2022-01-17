@@ -40,7 +40,7 @@ let { stdout, stderr, exitCode } ← IO.Process.output {
 if exitCode ≠ 0 then
   throw <| IO.userError s!"cp failed:\n{stderr}"
 
-def checkInput (day file : String) : IO Bool := do
+def checkInput (day file : String) : IO Unit := do
 let some home ← IO.getEnv "HOME"
     | throw <| IO.userError s!"variable not found: HOME"
 let source := s!"{home}/Downloads/input.txt"
@@ -50,7 +50,7 @@ if ¬ (← System.FilePath.pathExists dest) then
   IO.println dest
   if (← System.FilePath.pathExists source) then
     moveFile source dest
-    return false
+    println! "false"
   else
     throw <| IO.userError s!"input file not found at {source}"
-else return true
+else println! "true"
