@@ -1,6 +1,6 @@
-import Lib.Array.Basic
-import Sat.Advent.IO
-import Sat.Advent.Day1
+import Lib.Data.Array.Basic
+import Advent.IO
+import Advent.Day1
 
 -- #check Array.size_map
 
@@ -50,7 +50,7 @@ Array.mk <| (← input.splitOn "," |>.mapM parseNat)
 def examples :=
 "3,4,3,1,2"
 
-def inputFileName' := "Sat/Advent/Day6_input.txt"
+def inputFileName' := "Advent/Day6_input.txt"
 
 def main' : IO Unit := do
 let ar ← parseInput <| (← IO.FS.lines inputFileName').get! 0

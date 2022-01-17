@@ -5,55 +5,9 @@ import Lib.Data.Array.Basic
 import Lib.Data.Array.Instances
 import Lib.Data.Char
 import Lib.Data.Foldable
+import Lib.Data.HashSet
 import Lib.Data.String
 import Advent.IO
-
-namespace Std.HashMap
-
-variable [BEq α] [Hashable α]
-
-def modify? (m : HashMap α β) (k : α) (f : β → β) : HashMap α β :=
-match m.find? k with
-| none => m
-| some v => m.insert k (f v)
-
-def modifyD (m : HashMap α β) (d : β) (k : α) (f : β → β) :
-    HashMap α β :=
-m.insert k (f <| m.findD k d)
-
-def map (f : β → β')  (m : HashMap α β) : HashMap α β' :=
-m.fold (λ m k v => m.insert k (f v)) mkHashMap
-
-end Std.HashMap
-
-namespace Std.HashSet
-
-variable [BEq α] [Hashable α]
-
-def intersect (s₀ s₁ : HashSet α) : HashSet α :=
-s₀.fold (λ s x => if s₁.contains x then s.insert x else s)
-  mkHashSet
-
-def difference (s₀ s₁ : HashSet α) : HashSet α :=
-s₁.fold HashSet.erase s₀
-
-def union (s₀ s₁ : HashSet α) : HashSet α :=
-s₀.fold HashSet.insert s₁
-
-end Std.HashSet
-
-
-namespace Array
-
-def mapMaybe (f : α → Option β) : Array α → Array β :=
-Array.foldl
-  (λ acc a =>
-    match f a with
-    | none => acc
-    | some a => acc.push a )
-  #[]
-
-end Array
 
 namespace Day8
 open Std

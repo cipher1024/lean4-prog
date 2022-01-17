@@ -84,7 +84,7 @@ def decodeAirRates (input : Array (Array Nat)) : Nat × Nat × Nat :=
 
 namespace Day3
 
-def inputFileName := "Sat/Advent/Day3_input.txt"
+def inputFileName := "Advent/Day3_input.txt"
 
 def main : IO Unit := do
   let lns ← (← IO.FS.lines inputFileName).mapM readBinNum?

@@ -1,9 +1,9 @@
 
-import Sat.Advent.IO
-import Lib.Tactic
-import Lib.Array.Basic
+import Advent.IO
 import Lib.Classical
-import Lib.Nat
+import Lib.Data.Array.Basic
+import Lib.Data.Nat
+import Lib.Tactic
 import Std.Data.HashMap
 
 def Dim := 5
@@ -166,7 +166,7 @@ return score
 
 namespace Day4
 
-def inputFileName := "Sat/Advent/Day4_input.txt"
+def inputFileName := "Advent/Day4_input.txt"
 
 def examples :=
 "7,4,9,5,11,17,23,2,0,14,21,24,10,16,13,6,15,25,12,22,18,20,8,19,3,26,1

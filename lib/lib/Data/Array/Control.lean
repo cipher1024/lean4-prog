@@ -41,4 +41,12 @@ def firstM (as : Array α) (start := 0) (stop := as.size) : m β :=
 
 end Control
 
+def mapMaybe (f : α → Option β) : Array α → Array β :=
+Array.foldl
+  (λ acc a =>
+    match f a with
+    | none => acc
+    | some a => acc.push a )
+  #[]
+
 end Array

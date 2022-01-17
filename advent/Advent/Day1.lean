@@ -14,7 +14,7 @@ def measurements_ex : Array Nat :=
   260,
   263]
 
-def inputFileName := "Sat/Advent/Day1_input.txt"
+def inputFileName := "Advent/Day1_input.txt"
 
 def readInput : IO (Array Nat) := do
 let x ← IO.FS.lines inputFileName

@@ -1,5 +1,5 @@
 
-import Sat.Advent.IO
+import Advent.IO
 import Std.Data.HashMap
 
 open Std (HashMap)
@@ -80,7 +80,7 @@ lns.foldl processLine (0, Std.mkHashMap)
 -- let (x, input) := input.span Char.isDigit
 -- let (x, input) := input.dropWhile (not ∘ Char.isDigit) |>.span Char.isDigit
 
-def inputFileName := "Sat/Advent/Day5_input.txt"
+def inputFileName := "Advent/Day5_input.txt"
 
 def examples :=
 "0,9 -> 5,9

@@ -1,12 +1,12 @@
 
-import Lib.Nat
-import Lib.Array.Instances
+import Lib.Data.Array.Instances
+import Lib.Data.Fold
+import Lib.Data.Nat
+import Lib.Data.Quot
+import Lib.Data.Traversable
 import Lib.Equiv
-import Lib.Fold
-import Lib.Traversable
 import Lib.Tactic
-import Lib.Quot
-import Sat.Advent.IO
+import Advent.IO
 
 section day7
 
@@ -93,7 +93,7 @@ def examples :=
 def parseInput (input : String) : IO (Array Nat) := do
 Array.mk <| (← input.splitOn "," |>.mapM parseNat)
 
-def inputFileName := "Sat/Advent/Day7_input.txt"
+def inputFileName := "Advent/Day7_input.txt"
 -- #check elab
 -- #check Lean.PrettyPrinter.ppTerm
 -- #check Lean.MonadQuotation

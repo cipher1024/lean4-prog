@@ -53,7 +53,7 @@ def runStep' : Nat × Nat × Nat → Step → Nat × Nat × Nat
 
 def runTractory' (l : Array Step) : Nat × Nat × Nat :=
 l.foldl runStep' (0, 0, 0)
-def inputFileName := "Sat/Advent/Day2_input.txt"
+def inputFileName := "Advent/Day2_input.txt"
 
 def main : IO Unit := do
 IO.println (← System.FilePath.pathExists inputFileName)
