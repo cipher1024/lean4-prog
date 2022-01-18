@@ -74,7 +74,9 @@ induction n generalizing x₀ y₀ i j;
 focus
   have := Nat.zero_le (size ar)
   simp [foldl, foldlM, *, foldlM.loop, Nat.zero_sub]
-  split <;> simp [bind_pure, *]
+  split <;> simp [bind_pure, *] <;>
+  rw [bind_pure, bind_pure] <;> assumption
+  done
 next n ih =>
   simp only [*, foldlM.loop]
   split
@@ -83,6 +85,9 @@ next n ih =>
     auto
   focus
     simp [*]
+  simp only [*, foldlM.loop, bind_pure]
+  rw [bind_pure, bind_pure] <;> assumption
+  done
 
 theorem foldlM_hom (ar : Array α) {x₀ y₀} (h : m β → m' γ)
         (H' : h x₀ = y₀)
@@ -410,7 +415,7 @@ if h : i < ar.size then
   if p $ ar.get i h then takeWhileAux p (Nat.succ i) ar
   else ar.extract 0 i
 else ar.extract 0 i
-termination_by measure λ ⟨_, _, i, ar⟩ => ar.size - i
+termination_by' measure λ ⟨_, _, i, ar⟩ => ar.size - i
 decreasing_by prove_decr
 
 theorem takeWhileAux_eq (p : α → Bool) (ar : Subarray α) :
@@ -418,11 +423,8 @@ theorem takeWhileAux_eq (p : α → Bool) (ar : Subarray α) :
   if h : i < ar.size then
     if p $ ar.get i h then takeWhileAux p i.succ ar
     else ar.extract 0 i
-  else ar.extract 0 i := by
-simp only [takeWhileAux]
-simp only [takeWhileAux._unary]
-rewrite [WellFounded.fix_eq]
-refl
+  else ar.extract 0 i :=
+WellFounded.fix_eq _ _ _
 
 def takeWhile (p : α → Bool) (ar : Subarray α) : Subarray α :=
 takeWhileAux p 0 ar
@@ -433,7 +435,7 @@ if h : i < ar.size then
   if p $ ar.get i h then spanAux p (Nat.succ i) ar
   else (ar.extract 0 i, ar.extract i ar.size)
 else (ar.extract 0 i, ar.extract i ar.size)
-termination_by measure λ ⟨_, _, i, ar⟩ => ar.size - i
+termination_by' measure λ ⟨_, _, i, ar⟩ => ar.size - i
 decreasing_by prove_decr
 
 theorem spanAux_eq (p : α → Bool) (i : Nat) (ar : Subarray α) :
@@ -441,11 +443,8 @@ theorem spanAux_eq (p : α → Bool) (i : Nat) (ar : Subarray α) :
   if h : i < ar.size then
     if p $ ar.get i h then spanAux p (Nat.succ i) ar
     else (ar.extract 0 i, ar.extract i ar.size)
-  else (ar.extract 0 i, ar.extract i ar.size) := by
-simp only [spanAux]
-simp only [spanAux._unary]
-rewrite [WellFounded.fix_eq]
-refl
+  else (ar.extract 0 i, ar.extract i ar.size) :=
+WellFounded.fix_eq _ _ _
 
 def span (p : α → Bool) (ar : Subarray α) : Subarray α × Subarray α :=
 spanAux p 0 ar
@@ -456,7 +455,7 @@ if h : 0 < ar.size then
   if p $ ar.get 0 h then dropWhile p ar.popFront
   else ar
 else ar
-termination_by measure λ ⟨_, _, ar⟩ => ar.size
+termination_by' measure λ ⟨_, _, ar⟩ => ar.size
 decreasing_by prove_decr
 
 theorem dropWhile_eq (p : α → Bool) (ar : Subarray α) :
@@ -464,11 +463,8 @@ theorem dropWhile_eq (p : α → Bool) (ar : Subarray α) :
   if h : 0 < ar.size then
     if p $ ar.get 0 h then dropWhile p ar.popFront
     else ar
-  else ar := by
-simp only [dropWhile]
-simp only [dropWhile._unary]
-rewrite [WellFounded.fix_eq]
-refl
+  else ar :=
+WellFounded.fix_eq _ _ _
 
 theorem Nat.strong_ind {P : Nat → Prop} :
   (∀ x, (∀ y, y < x → P y) → P x) → ∀ a, P a :=
