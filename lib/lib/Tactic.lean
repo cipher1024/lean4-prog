@@ -4,14 +4,11 @@ import Lean.Elab.Tactic.Location
 import Lean.Elab.Tactic.Match
 import Lean.Meta.Tactic.Split
 import Lean.PrettyPrinter
-
+import Lib.Data.List.Control
 import Lib.Data.Array.Control
 
 class Reflexive (R : α → α → Prop) where
   refl x : R x x
-
-@[extern "initialize_Lib_Tactic"]
-constant init : Nat → Nat
 
 class Symmetric (R : α → α → Prop) where
   symmetry {x y} : R x y → R y x
@@ -609,21 +606,36 @@ def Syntax.mkStringLit [Monad m] [MonadRef m] (s : String) : m Syntax := do
 let pos ← MonadRef.mkInfoFromRefPos
 return node pos strLitKind #[atom pos s]
 
--- #check CoreM
+open Lean.Elab.Term
 
--- macro "dump!" t:term : term => do
---     let t ← liftM <| Lean.PrettyPrinter.ppTerm t
---     let out := toString t
---     let outLit ← Syntax.mkStringLit out
---     -- let outLit ← Lean.PrettyPrinter.delab _ _ outLit
---     `($outLit ++ " = " ++ toString $t)
+def padding (margin : Nat) (s : String) : String :=
+s ++ Nat.repeat (" " ++ .) (margin - s.length) ""
+
+def dumpListAux : List Syntax → TermElabM Syntax
+| [] => `( "" )
+| [x] => pure x
+| x :: xs => do
+  `( $x ++ "\n" ++ $(← dumpListAux xs) )
+
+def dumpList (ls : List Syntax) : TermElabM Expr := do
+  let out ← ls.mapM (λ x => do
+    toString (← Lean.PrettyPrinter.ppTerm x))
+  let len ← out.map String.length |>.maximum? |>.get!
+  let out := out.map <| (padding len . ++ " = ")
+  let lines ← out.zipWithM ls λ x y =>
+    `($(Syntax.mkStrLit x) ++ toString $y)
+  Lean.Elab.Term.elabTerm
+    (← dumpListAux lines)
+    (some (mkConst ``String))
+
+elab "dump_list!" "[" t:(term,*) "]" : term =>
+  dumpList t.getSepArgs.toList
+
+elab "print_vars!" "[" t:(term,*) "]" : term => do
+  let e ← dumpList t.getSepArgs.toList
+  mkAppOptM ``IO.println #[none, none, some e]
 
 elab "dump!" t:term : term =>
-  do
-    let out := toString (← Lean.PrettyPrinter.ppTerm t)
-    let outLit := Lean.mkStrLit (out ++ " = ")
-    let outLit ← Lean.PrettyPrinter.delab
-        (← getCurrNamespace)
-        (← getOpenDecls) outLit
-    Lean.Elab.Term.elabTerm (← `($outLit ++ toString $t) ) none
+  dumpList [t]
+
 end Macros
