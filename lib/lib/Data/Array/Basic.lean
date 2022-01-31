@@ -466,15 +466,6 @@ theorem dropWhile_eq (p : α → Bool) (ar : Subarray α) :
   else ar :=
 WellFounded.fix_eq _ _ _
 
-theorem Nat.strong_ind {P : Nat → Prop} :
-  (∀ x, (∀ y, y < x → P y) → P x) → ∀ a, P a :=
-by intros h x; apply Nat.lt_wfRel.wf.induction (C := P) x h
-
-theorem Nat.le_of_not_lt {x y : Nat}
-        (h : ¬ y < x) :
-  x ≤ y := by
-cases Nat.lt_or_ge y x <;> auto
-
 theorem span_eq_takeWhile_dropWhile (p : α → Bool) (ar : Subarray α) :
   ar.span p = (ar.takeWhile p, ar.dropWhile p) := by
 simp only [span, takeWhile]

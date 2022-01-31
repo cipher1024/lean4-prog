@@ -365,4 +365,13 @@ focus
   simp [*]
 end max_min
 
+theorem strong_ind {P : Nat → Prop} :
+  (∀ x, (∀ y, y < x → P y) → P x) → ∀ a, P a :=
+by intros h x; apply Nat.lt_wfRel.wf.induction (C := P) x h
+
+theorem le_of_not_lt {x y : Nat}
+        (h : ¬ y < x) :
+  x ≤ y := by
+cases Nat.lt_or_ge y x <;> auto
+
 end Nat
