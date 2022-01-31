@@ -214,7 +214,7 @@ variable [Functor F]
 variable [R.Functorial]
 
 instance : Functor (Quot1 R) where
-  map f := Quot1.lift (Quot1.mk _ ∘ (f <$> .)) $ by auto
+  map f := Quot1.lift (Quot1.mk _ ∘ (f <$> .)) $ by auto with 6
 
 end Functorial
 
@@ -226,8 +226,8 @@ instance : Applicative (Quot1 R) where
   pure x := Quot1.mk _ (pure x)
   seq f x := Quot1.liftOn₂ f (x ())
     (λ f x => Quot1.mk R (f <*> x))
-    ( by auto )
-    ( by auto )
+    ( by auto with 7 )
+    ( by auto with 7 )
 
 end Applicative
 

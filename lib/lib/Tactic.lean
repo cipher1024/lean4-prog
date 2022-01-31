@@ -359,6 +359,12 @@ instance : @Trans Nat Nat Nat LE.le LE.le LE.le where
 instance : @Trans Nat Nat Nat LT.lt LT.lt LT.lt where
   trans := Nat.lt_trans
 
+instance : @Trans Nat Nat Nat GE.ge GE.ge GE.ge where
+  trans h h' := Nat.le_trans h' h
+
+instance : @Trans Nat Nat Nat GT.gt GT.gt GT.gt where
+  trans h h' := Nat.lt_trans h' h
+
 open Lean.Elab.Tactic
 open Lean
 
@@ -526,30 +532,41 @@ withMainContext' $
   -- Meta.applyAuto ns allowMVars <|>
   -- liftMetaTactic1 ((some ∘ Prod.snd) <$> intro1 .)
 
-def Meta.tacAuto (ns : Array Name) (allowMVars := false) : SearchTacticM δ Unit :=
+def Meta.tacAuto (ns : Array Name) (bound : Option Nat)
+  (allowMVars := false) : SearchTacticM δ Unit :=
+let bound := bound.getD 5
 SearchTacticM.focusAndDone $
-iterate 10 <| Meta.tacAutoStep ns allowMVars
+iterate bound <| Meta.tacAutoStep ns allowMVars
 
 elab "destruct_hyp" : tactic => withMainContext Meta.destructHyp
+
+syntax "eauto" "[" ident,* "]" : tactic
+syntax "auto" ("[" ident,* "]")? (" with " num)? : tactic
+
 elab "auto" : tactic => do
-  withMainContext (Meta.tacAuto (← getAutoList)).run
+  withMainContext (Meta.tacAuto (← getAutoList) none).run
+
+elab "auto" " with " n:num : tactic => do
+  withMainContext (Meta.tacAuto (← getAutoList) (← Syntax.isNatLit? n)).run
+
+elab "auto" "[" ids:ident,* "]": tactic => do
+  let ids ← getAutoList (← ids.getElems.mapM resolveGlobalConstNoOverload)
+  withMainContext (Meta.tacAuto ids none).run
+
+elab "auto" "[" ids:ident,* "]" " with " n:num : tactic => do
+  let ids ← getAutoList (← ids.getElems.mapM resolveGlobalConstNoOverload)
+  withMainContext (Meta.tacAuto ids (← Syntax.isNatLit? n)).run
+
 elab "eauto" : tactic => do
-  withMainContext (Meta.tacAuto (← getAutoList) true).run
+  withMainContext (Meta.tacAuto (← getAutoList) none true).run
 elab "auto_step" : tactic => do
   withMainContext (Meta.tacAutoStep (← getAutoList)).run
 elab "apply_auto" : tactic => do
   withMainContext (Meta.applyAuto (← getAutoList)).run
 
-syntax "eauto" "[" ident,* "]" : tactic
-syntax "auto" "[" ident,* "]" : tactic
-
-elab "auto" "[" ids:ident,* "]" : tactic => do
-  let ids ← getAutoList (← ids.getElems.mapM resolveGlobalConstNoOverload)
-  withMainContext (Meta.tacAuto ids).run
-
 elab "eauto" "[" ids:ident,* "]" : tactic => do
   let ids ← getAutoList (← ids.getElems.mapM resolveGlobalConstNoOverload)
-  withMainContext (Meta.tacAuto ids true).run
+  withMainContext (Meta.tacAuto ids none true).run
 
 syntax "change" term "at" ident : tactic
 

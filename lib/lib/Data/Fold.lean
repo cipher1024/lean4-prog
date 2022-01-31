@@ -264,7 +264,7 @@ Quot.liftOn f (FoldImpl.scanl . ar) $ by
   simp [FoldImpl.scanl, _root_.scanl, accuml, ← traverse_eq_mapM]
   let R := scanl_SIM SIM
   apply (traverse_sim (R := R) _ _ _ _ _ _ _).1
-   <;> auto
+   <;> auto with 7
 
 def accuml (f : Fold α β) (ar : F α) : F β × β :=
 Quot.liftOn f (FoldImpl.accuml . ar) $ by
@@ -275,10 +275,10 @@ Quot.liftOn f (FoldImpl.accuml . ar) $ by
   -- apply Prod.eta
   apply Prod.eta <;> simp
   . apply (traverse_sim (R := R) _ _ _ _ _ _ _).1
-     <;> auto
+     <;> auto with 7
   . apply h₂
      <;> apply (traverse_sim (R := R) _ _ _ _ _ _ _).2
-     <;> auto
+     <;> auto with 7
 
 def accumr (f : Fold α β) (ar : F α) : F β × β :=
 Quot.liftOn f (FoldImpl.accumr . ar) $ by
@@ -289,10 +289,10 @@ Quot.liftOn f (FoldImpl.accumr . ar) $ by
   -- apply Prod.eta
   apply Prod.eta <;> simp
   . apply (traverse_sim (R := R) _ _ _ _ _ _ _).1
-     <;> auto
+     <;> auto with 7
   . apply h₂
      <;> apply (traverse_sim (R := R) _ _ _ _ _ _ _).2
-     <;> auto
+     <;> auto with 7
 
 def scanr (f : Fold α β) (ar : F α) : F β :=
 accumr f ar |>.1

@@ -5,6 +5,9 @@ import Lib.Classical
 namespace Nat
 
 attribute [auto] Nat.le_of_lt Nat.le_add_right Nat.zero_le
+  -- Nat.add_le_add_right Nat.add_le_add_left
+  Nat.le_add_left
+  Nat.le_add_right
 attribute [simp] Nat.add_succ Nat.succ_sub_succ Nat.lt_succ_self
 
 @[simp]
@@ -153,6 +156,22 @@ simp [(.-.), Sub.sub]; induction q
 . apply Nat.sub_zero
 . simp [Nat.sub, *]
 
+theorem Nat.strong_ind {P : Nat → Prop} :
+  (∀ x, (∀ y, y < x → P y) → P x) → ∀ a, P a :=
+by intros h x; apply Nat.lt_wfRel.wf.induction (C := P) x h
+
+theorem Nat.le_of_not_lt {x y : Nat}
+        (h : ¬ y < x) :
+  x ≤ y := by
+cases Nat.lt_or_ge y x <;> auto
+
+@[auto]
+theorem Nat.not_lt_of_le {x y : Nat}
+        (h : y ≤ x) :
+  ¬ x < y := by
+intros h'
+apply Nat.not_le_of_gt h' h
+
 theorem add_le_iff_l {p q z : Nat}
   (Hq : z ≤ q) :
   z + p ≤ q ↔ p ≤ q - z := by
@@ -252,10 +271,10 @@ next h =>
     cases h'; assumption
 
 theorem max_comm : max x y = max y x := by
-simp [eq_iff_forall_le_iff]; auto
+simp [eq_iff_forall_le_iff]; auto with 6
 
 theorem min_comm : min x y = min y x := by
-simp [eq_iff_forall_ge_iff]; auto
+simp [eq_iff_forall_ge_iff]; auto with 6
 
 theorem le_max_l : x ≤ y → x ≤ max y z := by
 intros h
