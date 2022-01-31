@@ -112,10 +112,13 @@ if hsize : 0 < ar.size then
   if win then
     let score := b'.sum * draw
     some (n', score)
-  else run n' ar.popFront b'
+  else
+    have : ar.popFront.size < ar.size := by
+      simp [*]; auto [Nat.sub_lt]
+    run n' ar.popFront b'
 else none
-termination_by measure λ ⟨_,ar,_⟩ => ar.size
-decreasing_by prove_decr
+termination_by run ar _ => ar.size
+-- decreasing_by prove_decr
 
 def Option.combine (f : α → α → α) : Option α → Option α → Option α
 | none, x => x

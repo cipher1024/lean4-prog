@@ -8,5 +8,5 @@ package lean_tools {
     #[ { name := `lake,
          src := Source.git
            "https://github.com/leanprover/lake"
-           "90e4ae7d51a9c0ecffab9057ad9a2bbfba7ed2d6" } ]
+           "3cd49e6e180c1837adb495f48016c524032933c8" } ]
 }

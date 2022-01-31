@@ -107,9 +107,11 @@ def parseArgsAux (acc : List String) (x : α)
 
 end
 
-termination_by measure λ
-               | Sum.inl ⟨_,_,_,_,x,_⟩ => (2 * x.length) + 1
-               | Sum.inr ⟨_,_,_,_,_,x⟩ => 2 * x.length
+termination_by
+  parseArgsFeed x _ => (2 * x.length) + 1
+  parseArgsAux x => 2 * x.length
+decreasing_by simp [InvImage, WellFoundedRelation.rel, sizeOf]
+
 
 @[specialize]
 def parseArgs (α : Type) [CLIArgRecord α]

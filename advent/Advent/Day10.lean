@@ -39,7 +39,7 @@ def pointsTable₂ : HashMap Char Nat :=
  (']', 2),
  ('}', 3),
  ('>', 4) ].toHashMap
-
+#check Stream
 def inputFileName := "Advent/Day10_input.txt"
 
 initialize do
