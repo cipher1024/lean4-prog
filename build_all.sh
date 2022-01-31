@@ -6,7 +6,7 @@ lake build -d=lib/
 lake build -d=lens/ -- --test
 lake build -d=lean-tools/
 lake build -d=cmd-line-args/
-lake build -d=advent/
+cd advent && lake build
 lake build
 set +x
 echo Success!!
