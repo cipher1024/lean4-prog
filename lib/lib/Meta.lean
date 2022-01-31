@@ -120,4 +120,18 @@ addAndCompile
     DefinitionSafety.safe
 n
 
+def addThm (n : Name) (t : Expr) (d : Expr) : MetaM Name := do
+let t ← instantiateMVars t
+let d ← instantiateMVars d
+addDecl
+  <| Declaration.thmDecl
+  <| TheoremVal.mk
+    (ConstantVal.mk n [] t) d
+n
+
+def Simp.Result.proof (r : Simp.Result) : MetaM Expr :=
+match r.proof? with
+| none => mkAppOptM ``rfl #[r.expr]
+| some p => pure p
+
 end Lean.Meta
