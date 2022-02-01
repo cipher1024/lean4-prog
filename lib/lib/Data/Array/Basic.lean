@@ -108,6 +108,57 @@ simp at this; auto
 
 end foldlM_sim
 
+variable [Monad m] [LawfulMonad m]
+
+local notation "Push" =>
+  (λ ar x => (pure <| Array.push ar x))
+
+@[simp]
+theorem Array.toSubarray_toArray_eq_nil (ar : Array α) :
+  (toSubarray ar i i).toArray = #[] :=
+sorry
+
+@[simp]
+theorem Array.toSubarray_toArray_eq_self (ar : Array α) :
+  (toSubarray ar 0 ar.size).toArray = ar :=
+sorry
+
+theorem Array.push_toSubarray (ar : Array α) i h :
+  (toSubarray ar 0 i).toArray.push (ar.get ⟨i,h⟩) =
+  (toSubarray ar 0 i.succ).toArray :=
+sorry
+
+theorem foldlM_eq_self (ar : Array α)  :
+  foldlM Push #[] ar =
+  (pure ar : m _) := by
+simp [foldl, foldlM, Nat.le_refl]
+suffices H :
+    ∀ i, i ≤ ar.size →
+      (ar.foldlM Push ar[:i].toArray i ar.size) =
+      (pure ar : m _) by
+  specialize H 0 (Nat.zero_le _)
+  simp [foldlM, Nat.le_refl] at H; assumption
+intros i Hi; simp [foldl, foldlM, *]
+generalize Hn : size ar - i = n
+induction n generalizing i;
+next =>
+  have h₀ : ¬ i < size ar := by
+    have Hn := Nat.le_of_eq Hn
+    -- have Hn := Nat.sub_le Hn
+    skip
+    admit
+  have h₁ : i = size ar := by
+    auto [Nat.le_antisymm]
+  simp [foldlM.loop, h₀]
+  simp [*, Nat.le_refl]
+next ih =>
+  have h₀ : i < size ar := sorry
+  simp [foldlM.loop, h₀, Array.push_toSubarray]
+  rw [ih _ h₀]
+  apply Nat.succ_inj
+  rw [Nat.sub_succ, Nat.succ_pred]
+  <;> auto [Nat.zero_lt_sub_of_lt]
+
 section foldl_sim
 
 variable (f : β → α → β) (g : γ → α → γ)
@@ -235,10 +286,10 @@ focus
   apply Nat.le_antisymm _ (Nat.zero_le _)
   auto
 
--- @[simp]
--- theorem map_push {α β} (f : α → β) xs x :
---   f <$> Array.push xs x = Array.push (f <$> xs) (f x) := by
--- cases xs; simp [push, (.<$>.), map, mapM]
+theorem toList_inj (x y : Array α) :
+  x.toList = y.toList → x = y := by
+cases x; cases y
+simp [toList_eq_data]; auto
 
 @[simp]
 theorem map_toArray {α β : Type _} (f : α → β) (l : List α) :
@@ -310,7 +361,8 @@ def extract (ar : Subarray α) (i j : Nat) : Subarray α :=
       apply Nat.le_max_r
       rewrite [Nat.le_min_iff]
       auto
-    . auto
+    . admit
+    -- . auto
   have h₂ : stop ≤ ar.as.size := by
     apply Nat.min_le_r; apply ar.h₂
   { as := ar.as,
@@ -562,6 +614,48 @@ sorry
 theorem size_append (ar₀ ar₁ : Array α) :
   (ar₀ ++ ar₁).size = ar₀.size + ar₁.size :=
 sorry
+
+theorem toArray_append (x y : List α) :
+  (x ++ y).toArray = x.toArray ++ y.toArray :=
+sorry
+
+@[simp]
+theorem push_append a (x y : Array α) :
+  (x ++ y).push a = x ++ y.push a := sorry
+
+@[simp]
+theorem nil_appendList (a : List α) :
+  #[].appendList a = a.toArray := sorry
+
+theorem appendList_eq (x : Array α) (y : List α) :
+  x.appendList y = x ++ y.toArray := sorry
+
+theorem toList_append (x y : Array α) :
+  toList (x ++ y) = x.toList ++ y.toList := sorry
+
+-- #exit
+-- @[simp]
+-- theorem map_push {α β} (f : α → β) xs x :
+--   f <$> Array.push xs x = Array.push (f <$> xs) (f x) := by
+-- cases xs; simp [push, (.<$>.), map, mapM]
+
+@[simp]
+theorem append_nil (xs : Array α) :
+  xs ++ #[] = xs := sorry
+
+@[simp]
+theorem nil_append (xs : Array α) :
+  #[] ++ xs = xs := sorry
+
+theorem append_assoc (xs ys zs : Array α) :
+  (xs ++ ys) ++ zs = xs ++ (ys ++ zs) := by
+apply toList_inj; simp [toList_append, List.append_assoc]
+
+-- theorem toList_appendList (x : Array α) y :
+--   toList (x.appendList y) = x.toList ++ y := by
+-- let SIM {α} (x : Array α) (z : List α) := toList x = z ++ y
+-- refine' Array.foldl_sim (SIM := SIM) (ar := x)
+--   (f := Array.push) _ _ _ _ _ _
 
 end Array
 

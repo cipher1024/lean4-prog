@@ -197,4 +197,16 @@ theorem foldr_sim {SIM : β → γ → Prop}
 repeat rw [foldr_eq_foldl_reverse_toList]
 auto [List.foldl_sim]
 
+theorem foldr_hom {f : α → β → β} {g : α → γ → γ}
+        {h : β → γ} {x₀ y₀} (t : F α) :
+    h x₀ = y₀ →
+    (∀ x y, h (f x y) = g x (h y)) →
+    h (foldr f x₀ t) = foldr g y₀ t := by
+let R x y := h x = y
+intros h₀ h₁
+apply foldr_sim (SIM := R)
+. assumption
+. simp only; intros; substAll; apply h₁
+done
+
 end LawfulFoldable

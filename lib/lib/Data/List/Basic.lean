@@ -26,6 +26,15 @@ generalize [] = ys
 induction xs generalizing ys
  <;> simp [List.foldl, *, List.append_assoc]
 
+theorem foldr_eq_self :
+  (xs.foldr (.::.) []) = xs := by
+trans (xs ++ [])
+case second => simp
+generalize [] = ys
+induction xs generalizing ys
+ <;> simp [List.foldr, *, List.append_assoc]
+
+
 @[simp]
 theorem map_nil (f : α → β) : f <$> [] = [] := rfl
 
@@ -84,7 +93,7 @@ end List
 
 namespace List
 
-variable {α β γ : Type u} {f : β → α → β} {g : γ → α → γ}
+variable {α β γ : Type _} {f : β → α → β} {g : γ → α → γ}
 variable {SIM : β → γ → Prop}
 variable {x₀ y₀} (t : List α)
 
