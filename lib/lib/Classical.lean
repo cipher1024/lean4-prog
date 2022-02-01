@@ -3,6 +3,12 @@ import Lib.Tactic
 
 namespace Classical
 
+theorem iff_iff_and_or_and {p q} :
+  (p ↔ q) ↔ (p ∧ q) ∨ (¬ p ∧ ¬ q) := by
+constructor <;> intros h
+. simp [h, and_self, Classical.em]
+. cases h <;> auto
+
 @[simp]
 theorem not_exists (p : α → Prop) :
   ¬ (∃ x, p x) ↔ ∀ x, ¬ p x := by

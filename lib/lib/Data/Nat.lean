@@ -5,10 +5,18 @@ import Lib.Classical
 namespace Nat
 
 attribute [auto] Nat.le_of_lt Nat.le_add_right Nat.zero_le
-  -- Nat.add_le_add_right Nat.add_le_add_left
-  Nat.le_add_left
-  Nat.le_add_right
+attribute [auto] Nat.le_add_left Nat.le_add_right
+attribute [auto] Nat.add_le_add_right Nat.add_le_add_left
 attribute [simp] Nat.add_succ Nat.succ_sub_succ Nat.lt_succ_self
+attribute [simp] Nat.pow_succ Nat.pow_zero
+
+theorem succ_inj {m n : Nat} (h : m.succ = n.succ) : m = n :=
+by cases h; refl
+
+theorem succ_pred {n} (h : 0 < n) : succ (pred n) = n := by
+cases n
+next => cases h
+next => refl
 
 @[simp]
 theorem zero_sub (n : Nat) : 0 - n = 0 := by
@@ -392,5 +400,283 @@ theorem le_of_not_lt {x y : Nat}
         (h : ¬ y < x) :
   x ≤ y := by
 cases Nat.lt_or_ge y x <;> auto
+
+@[auto]
+theorem not_lt_of_le {x y : Nat}
+        (h : x ≤ y) :
+  ¬ y < x := by
+intros h'
+have := Nat.not_le_of_gt h'
+auto
+
+end Nat
+
+
+namespace Nat
+
+theorem lt_iff_not_le {x y : Nat} :
+  x < y ↔ ¬ y ≤ x :=
+by auto [Nat.gt_of_not_le, Nat.not_le_of_gt]
+
+theorem le_iff_not_lt {x y : Nat} :
+  x ≤ y ↔ ¬ y < x :=
+by auto [Nat.le_of_not_gt, Nat.not_lt_of_le]
+
+@[auto]
+theorem div_gcd_self_l : d / gcd n d > 0 :=
+sorry
+
+theorem gcd_mul p q n : gcd p q * n = gcd (p * n) (q * n) :=
+sorry
+
+theorem mul_inj (h : n > 0) : p * n = q * n → p = q :=
+sorry
+
+def divides (p q : Nat) :=
+∃ k, p * k = q
+
+infix:65 " ∣ " => divides
+
+@[simp]
+theorem div_mul_self (h : p ∣ q) :
+  q / p * p = q := sorry
+
+@[simp]
+theorem gcd_divides_l : gcd p q ∣ p :=
+sorry
+
+@[simp]
+theorem gcd_divides_r : gcd p q ∣ q :=
+sorry
+
+theorem sub_lt_of_lt_add {x y : Nat} (h₀ : y ≤ x) :
+  x < z + y →
+  x - y < z := by
+intros h
+apply Nat.gt_of_not_le
+intros h'
+apply Nat.not_le_of_gt h; clear h
+rw [add_le_iff_r]
+<;> auto
+
+theorem le_of_add_le_add_left {x y z : Nat}
+        (h : x + z ≤ y + z) :
+  x ≤ y := by
+induction z generalizing x y with
+| zero => simp at h; assumption
+| succ n ih => simp at h; apply ih; assumption
+
+theorem le_of_add_le_add_right {x y z : Nat}
+        (h : z + x ≤ z + y) :
+  x ≤ y := by
+simp [Nat.add_comm z] at h
+apply le_of_add_le_add_left h
+
+theorem le_of_mul_le_mul_left {x y z : Nat}
+        (h' : z > 0)
+        (h : x * z ≤ y * z) :
+  x ≤ y := by
+induction x generalizing y z with
+| zero => apply zero_le
+| succ n ih =>
+  simp [succ_mul] at h
+  -- cases h'
+  -- focus simp at h; assumption
+  -- focus
+    -- have h := le_of_add_le_add_right h
+  -- done
+  admit
+
+-- open Classical
+
+theorem sub_add_self {a b : Nat} (h : b ≤ a) :
+  (a - b) + b = a := by
+rw [Nat.add_comm, Nat.add_sub_assoc, Nat.add_sub_self_left]
+<;> assumption
+
+theorem le_add_of_sub_le_l {m n k : Nat} :
+  n - k ≤ m → n ≤ k + m := by
+rw [le_iff_not_lt, le_iff_not_lt]
+intros h h'
+apply h; clear h
+apply Nat.lt_of_le_of_lt (m := (k + m) - k)
+next =>
+  rw [add_sub_self_left]; refl
+next =>
+  apply sub_lt_of_lt_add; auto
+  rw [Nat.sub_add_self]; auto
+  trans k + m <;> auto
+
+@[simp]
+theorem add_sub_cancel_l {x y : Nat} :
+  x + y - y = x := by
+rw [eq_iff_forall_ge_iff]; intro z
+rw [← add_le_iff_r]
+constructor
+focus
+  apply le_of_add_le_add_left
+focus
+  auto
+focus
+  apply Nat.le_add_left
+
+theorem succ_le_iff {x y : Nat} (h : 0 < y) :
+  succ x ≤ y ↔ x ≤ pred y := by
+induction y
+. cases h
+. simp [pred]
+
+section div
+
+theorem div_sub_self {x y : Nat} :
+  (x - y) / y = pred (x / y) := by
+rw [div_eq x y]; split
+. refl
+next h =>
+  have : ¬ (0 < y ∧ y ≤ x - y) := by
+    intros h'; cases h'
+    apply h; clear h
+    constructor; assumption
+    trans (x - y)
+    <;> auto [Nat.sub_le]
+  rw [div_eq]; simp [*]
+
+theorem mul_le_iff_le_div {x y k : Nat} (h : 1 ≤ k) :
+  x*k ≤ y ↔ x ≤ y / k := by
+induction x generalizing y with
+| zero => simp [zero_le]
+| succ x =>
+  simp [succ_mul]
+  have Hy := div_eq y k
+  revert Hy; split <;> intro Hy
+  next h =>
+    cases h
+    have : 0 < y / k := by
+      simp [Hy, zero_lt_succ]
+    clear Hy
+    simp [succ_le_iff, add_le_iff_r, div_sub_self, *]
+    done
+  next h =>
+    have h : ¬ k ≤ y := by
+      intro h₀; apply h; auto
+    simp [Hy, Classical.iff_iff_and_or_and]
+    right; constructor
+    next =>
+      intros h'; apply h; clear h
+      trans x * k + k <;>  auto [Nat.le_add_left]
+    next =>
+      apply Nat.not_succ_le_zero
+
+theorem div_lt {x k : Nat} (h : k > 1) (h' : 0 < x) :
+  x / k < x := by
+rw [lt_iff_not_le, ← mul_le_iff_le_div]
+focus
+  intros h
+  have h' : x * k ≤ x * 1 := sorry
+  -- have := mul_inj _ h'
+  admit
+admit
+
+theorem div_le_div {x y k : Nat} (h : x ≤ y) :
+  x / k ≤ y / k :=
+sorry
+
+end div
+
+section pow
+
+@[simp]
+theorem one_pow {x : Nat} : 1^x = 1 := by
+induction x <;> simp; assumption
+
+@[auto]
+theorem one_le_pow {x y : Nat} (h : 1 ≤ x) :
+  1 ≤ x^y := by
+suffices 1^y ≤ x^y by
+  simp [one_pow] at this; auto
+auto [pow_le_pow_of_le_left]
+
+end pow
+
+section log2
+
+theorem log2_def n :
+  log2 n =
+  if h : n ≥ 2 then log2 (n / 2) + 1 else 0 :=
+WellFounded.fix_eq _ _ _
+
+@[simp]
+theorem log2_one : log2 1 = 0 := by
+have h₀ : ¬ 2 ≤ 1 :=
+  by intros h; cases h with
+     | step h  => apply Nat.not_succ_le_zero _ h
+rw [log2_def]; simp [*]
+
+@[simp]
+theorem log2_2 : log2 2 = 1 := by
+have h₀ : 2 ≤ 2 := by refl
+rw [log2_def]; simp [*]
+
+theorem log2_div_2 {x : Nat} : log2 (x / 2) = log2 x - 1 := by
+rw [log2_def x]
+split
+. rw [add_sub_cancel_l]
+next h' =>
+have : ¬ 2 ≤ x / 2 := by
+  intros h₀; apply h'
+  admit
+  -- trans x / 2 <;> try auto
+  -- apply Nat.le_of_lt
+  -- apply div_lt
+  -- . repeat constructor
+  -- apply gt_of_not_le
+  -- intro h; have h := Nat.le_antisymm h (zero_le _)
+  -- subst h; cases h₀
+rw [log2_def]; simp [*]
+
+theorem log2_le_log2 {x y : Nat} (h : x ≤ y) :
+  log2 x ≤ log2 y := by
+induction x using Nat.strong_ind generalizing y;
+next x ih =>
+  rw [log2_def x,log2_def y]
+  split
+  next h₀ =>
+    have : 2 ≤ y := by
+      trans x <;> assumption
+    simp [*]; apply ih
+    focus
+      have h₁ : 0 < 2 := by repeat constructor
+      have h₂ : 1 < 2 := by repeat constructor
+      apply Nat.div_lt h₂
+      apply Nat.lt_of_lt_of_le h₁ h₀
+    focus
+      auto [Nat.div_le_div]
+  focus auto
+
+theorem pow_le_iff_le_log {x y : Nat} (h : 1 ≤ y) :
+  2^x ≤ y ↔ x ≤ log2 y := by
+induction x generalizing y;
+. simp [*, Nat.zero_le]
+byCases h : 1 ≤ y / 2
+focus
+  have h' : 1 ≤ log2 y := by
+    rw [← mul_le_iff_le_div] at h
+    have h := log2_le_log2 h
+    simp at h; all_goals auto
+  simp [*, Nat.zero_le, mul_le_iff_le_div, log2_div_2, ← add_le_iff_r]
+next n ih _ =>
+  have h' : y = 1 := by
+    admit
+    -- rw [← mul_le_iff_le_div] at h
+    -- apply Nat.le_antisymm
+    -- all_goals auto
+  have h'' : succ n ≤ 0 ↔ False :=
+    by auto [Nat.not_succ_le_zero]
+  subst y; simp [mul_le_iff_le_div, *]
+  apply Nat.not_le_of_gt
+  change 1 /2 with 0
+  auto [pos_pow_of_pos]
+
+end log2
 
 end Nat
