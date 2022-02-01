@@ -611,6 +611,21 @@ elab "change" t:term "at" h:ident : tactic =>
 --             | apply swapHyp $h <;> clear $h
 --               )
 
+open Lean.Elab.Tactic
+
+elab "all_but_first " tac:tactic : tactic => do
+  let mvarId :: mvarIds ← getUnsolvedGoals
+    | throwNoGoalsToBeSolved
+  let mut gs := #[mvarId]
+  for g in mvarIds do
+    setGoals [g]
+    let _ ← tac
+    let g' ← getGoals
+    gs := gs.appendList g'
+  setGoals gs.toList
+
+macro:1 x:tactic " </> " y:tactic:0 : tactic =>
+  `(tactic| focus ($x:tactic; all_but_first ($y:tactic; done)))
 
 section Macros
 open Lean Syntax
