@@ -1,7 +1,7 @@
 
 import Lib.Data.Array.Basic
 import Lib.Data.Foldable
-import Lib.Data.Prod
+import Lib.Data.Prod.Basic
 import Lib.Data.Profunctor
 import Lib.Data.Quot
 import Lib.Data.Traversable

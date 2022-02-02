@@ -1,6 +1,5 @@
 
-def Prod.swap {α β} : α × β → β × α
-| (x, y) => (y, x)
+import Lib.Data.Prod.Defs
 
 class Profunctor (p : Type u → Type v → Type w) where
   dimap {α α' β β'} :

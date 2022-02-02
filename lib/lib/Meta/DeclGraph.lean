@@ -1,6 +1,7 @@
 
 -- import Lean.Meta.Eqns
 import Lean.Elab.Declaration
+import Lib.Data.Prod.Defs
 
 -- open Lean.Meta
 open Lean.Expr
@@ -155,9 +156,6 @@ def isPrivate : Name → Bool
 def hasUnderscore : Name → Bool
 | Name.str _ s .. => "_".isPrefixOf s
 | _ => false
-
-def Prod.swap : α × β → β × α
-| (x, y) => (y, x)
 
 def isThm : ConstantInfo → Bool
 | ConstantInfo.thmInfo _ => true
