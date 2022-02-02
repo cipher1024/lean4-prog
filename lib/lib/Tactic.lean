@@ -613,61 +613,16 @@ elab "change" t:term "at" h:ident : tactic =>
 
 open Lean.Elab.Tactic
 
-elab "all_but_first " tac:tactic : tactic => do
+elab "all_but_first " tac:tacticSeq : tactic => do
   let mvarId :: mvarIds ← getUnsolvedGoals
     | throwNoGoalsToBeSolved
   let mut gs := #[mvarId]
   for g in mvarIds do
     setGoals [g]
-    let _ ← tac
+    evalTactic tac
     let g' ← getGoals
     gs := gs.appendList g'
   setGoals gs.toList
 
 macro:1 x:tactic " </> " y:tactic:0 : tactic =>
   `(tactic| focus ($x:tactic; all_but_first ($y:tactic; done)))
-
-section Macros
-open Lean Syntax
-
-def Syntax.mkStringLit' (ref : Syntax) (s : String) : Syntax :=
-let pos := ref.getHeadInfo
-node pos strLitKind #[atom pos s]
-
-def Syntax.mkStringLit [Monad m] [MonadRef m] (s : String) : m Syntax := do
-let pos ← MonadRef.mkInfoFromRefPos
-return node pos strLitKind #[atom pos s]
-
-open Lean.Elab.Term
-
-def padding (margin : Nat) (s : String) : String :=
-s ++ Nat.repeat (" " ++ .) (margin - s.length) ""
-
-def dumpListAux : List Syntax → TermElabM Syntax
-| [] => `( "" )
-| [x] => pure x
-| x :: xs => do
-  `( $x ++ "\n" ++ $(← dumpListAux xs) )
-
-def dumpList (ls : List Syntax) : TermElabM Expr := do
-  let out ← ls.mapM (λ x => do
-    toString (← Lean.PrettyPrinter.ppTerm x))
-  let len ← out.map String.length |>.maximum? |>.get!
-  let out := out.map <| (padding len . ++ " = ")
-  let lines ← out.zipWithM ls λ x y =>
-    `($(Syntax.mkStrLit x) ++ toString $y)
-  Lean.Elab.Term.elabTerm
-    (← dumpListAux lines)
-    (some (mkConst ``String))
-
-elab "dump_list!" "[" t:(term,*) "]" : term =>
-  dumpList t.getSepArgs.toList
-
-elab "print_vars!" "[" t:(term,*) "]" : term => do
-  let e ← dumpList t.getSepArgs.toList
-  mkAppOptM ``IO.println #[none, none, some e]
-
-elab "dump!" t:term : term =>
-  dumpList [t]
-
-end Macros

@@ -1,6 +1,19 @@
 
 import Lib.Tactic
 
+namespace Decidable
+
+variable {P Q} [Hdec : Decidable P]
+variable (h : P ↔ Q)
+
+def congr : Decidable Q :=
+match Hdec with
+| isTrue hp => isTrue <| h.mp hp
+| isFalse hnp => isFalse <| mt h.mpr hnp
+
+end Decidable
+
+
 namespace Classical
 
 theorem iff_iff_and_or_and {p q} :
