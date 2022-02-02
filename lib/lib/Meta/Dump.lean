@@ -13,20 +13,19 @@ def mkListLit : List Syntax → m Syntax
 | [] => `(List.nil)
 | x :: xs => do `(List.cons $x $(← mkListLit xs))
 
+def mkStringLit' (ref : Syntax) (s : String) : Syntax :=
+let pos := ref.getHeadInfo
+node pos strLitKind #[atom pos s]
+
+def mkStringLit [Monad m] [MonadRef m] (s : String) : m Syntax := do
+let pos ← MonadRef.mkInfoFromRefPos
+return node pos strLitKind #[atom pos s]
+
 end Lean.Syntax
 
 namespace Lean.Elab.Tactic
 
 open Syntax Lean.Meta
-
-def Syntax.mkStringLit' (ref : Syntax) (s : String) : Syntax :=
-let pos := ref.getHeadInfo
-node pos strLitKind #[atom pos s]
-
-def Syntax.mkStringLit [Monad m] [MonadRef m] (s : String) : m Syntax := do
-let pos ← MonadRef.mkInfoFromRefPos
-return node pos strLitKind #[atom pos s]
-
 
 section printVars
 variable [MonadLiftT IO m] [Monad m]
