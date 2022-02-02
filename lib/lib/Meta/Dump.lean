@@ -2,6 +2,7 @@ import Lean.PrettyPrinter
 
 import Lib.Meta.Format
 import Lib.Data.List.Control
+import Lib.Data.String.Defs
 
 namespace Lean.Syntax
 variable [Monad m]
@@ -26,8 +27,6 @@ def Syntax.mkStringLit [Monad m] [MonadRef m] (s : String) : m Syntax := do
 let pos ← MonadRef.mkInfoFromRefPos
 return node pos strLitKind #[atom pos s]
 
-def padding (margin : Nat) (s : String) : String :=
-s ++ Nat.repeat (" " ++ .) (margin - s.length) ""
 
 section printVars
 variable [MonadLiftT IO m] [Monad m]
@@ -50,6 +49,8 @@ def printVars [MonadLiftT IO m] [Monad m] :
 printVarsAux ""
 
 end printVars
+
+open String
 
 def dumpListAux : List Syntax → TermElabM Syntax
 | [] => `( "" )
