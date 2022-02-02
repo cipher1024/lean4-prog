@@ -164,17 +164,17 @@ simp [(.-.), Sub.sub]; induction q
 . apply Nat.sub_zero
 . simp [Nat.sub, *]
 
-theorem Nat.strong_ind {P : Nat → Prop} :
+theorem strong_ind {P : Nat → Prop} :
   (∀ x, (∀ y, y < x → P y) → P x) → ∀ a, P a :=
 by intros h x; apply Nat.lt_wfRel.wf.induction (C := P) x h
 
-theorem Nat.le_of_not_lt {x y : Nat}
+theorem le_of_not_lt {x y : Nat}
         (h : ¬ y < x) :
   x ≤ y := by
 cases Nat.lt_or_ge y x <;> auto
 
 @[auto]
-theorem Nat.not_lt_of_le {x y : Nat}
+theorem not_lt_of_le {x y : Nat}
         (h : y ≤ x) :
   ¬ x < y := by
 intros h'
@@ -392,25 +392,7 @@ focus
   simp [*]
 end max_min
 
-theorem strong_ind {P : Nat → Prop} :
-  (∀ x, (∀ y, y < x → P y) → P x) → ∀ a, P a :=
-by intros h x; apply Nat.lt_wfRel.wf.induction (C := P) x h
-
-theorem le_of_not_lt {x y : Nat}
-        (h : ¬ y < x) :
-  x ≤ y := by
-cases Nat.lt_or_ge y x <;> auto
-
-@[auto]
-theorem not_lt_of_le {x y : Nat}
-        (h : x ≤ y) :
-  ¬ y < x := by
-intros h'
-have := Nat.not_le_of_gt h'
-auto
-
 end Nat
-
 
 namespace Nat
 
