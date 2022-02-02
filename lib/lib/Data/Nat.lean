@@ -1,6 +1,6 @@
 
+import Lib.Logic.Classical
 import Lib.Tactic
-import Lib.Classical
 
 namespace Nat
 

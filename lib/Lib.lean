@@ -2,7 +2,7 @@
 -- import Lib.MySimp
 import Lib.Algebra.Monoid
 import Lib.Attributes
-import Lib.Classical
+import Lib.Logic.Classical
 import Lib.Data.Array
 import Lib.Data.Fold
 import Lib.Data.Fold
