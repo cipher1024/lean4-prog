@@ -2,7 +2,7 @@
 import Advent.IO
 import Lib.Data.Char
 import Lib.Data.HashMap
-import Lib.Data.String
+import Lib.Data.String.Basic
 import Std.Data.HashMap
 import Std.Data.BinomialHeap
 

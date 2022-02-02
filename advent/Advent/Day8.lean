@@ -6,7 +6,7 @@ import Lib.Data.Array.Instances
 import Lib.Data.Char
 import Lib.Data.Foldable
 import Lib.Data.HashSet
-import Lib.Data.String
+import Lib.Data.String.Basic
 import Advent.IO
 
 namespace Day8
