@@ -1,6 +1,7 @@
 #! /bin/bash
 
 set -e
+set -x
 
 lake build -d=lib/
 lake build -d=lens/ -- --test

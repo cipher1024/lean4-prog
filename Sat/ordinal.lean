@@ -1,5 +1,5 @@
 import Lean.Elab.Command
-import Lib.Classical
+import Lib.Logic.Classical
 
 macro "obtain " p:term " from " d:term : tactic =>
   `(tactic| match $d:term with | $p:term => ?_)

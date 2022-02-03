@@ -1,6 +1,6 @@
 
 import Advent.IO
-import Lib.Classical
+import Lib.Logic.Classical
 import Lib.Data.Array.Basic
 import Lib.Data.Nat
 import Lib.Tactic

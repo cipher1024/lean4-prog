@@ -1,6 +1,7 @@
 
 -- import Lean.Meta.Eqns
 import Lean.Elab.Declaration
+import Lib.Data.HashMap
 import Lib.Data.Prod.Defs
 
 -- open Lean.Meta
@@ -54,20 +55,6 @@ def listEdges (e : Expr) (noProps := true) : List (Name × Name) :=
   | some (_, es) => es
 
 open Std
-
-section HashMap
-variable [BEq α] [Hashable α]
-
-def Std.HashMap.modifyD (m : HashMap α β) (k : α) (x₀ : β)
-    (f : β → β) : HashMap α β :=
-let (m, x) :=
-  match m.find? k with
-  | some v => (m.erase k, v)
-  | none => (m, x₀)
-let x' := f x
-m.insert k x'
-
-end HashMap
 
 structure Queue (α : Type _) where
   front : List α := []
