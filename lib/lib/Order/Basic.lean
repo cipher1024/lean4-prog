@@ -26,8 +26,41 @@ by rw [lt_iff]; auto
 theorem lt_antisymm {x y : α} : x < y → y < x → False :=
 by simp [lt_iff]; auto
 
-end Preorder
+variable {x y z w : α}
 
+theorem lt_of_le_of_lt_of_le
+        (h₀ : x ≤ y)
+        (h₁ : y < z)
+        (h₂ : z ≤ w) :
+  x < w := by
+rw [lt_iff] at h₁ ⊢
+cases h₁ with | intro h₁ hb =>
+constructor
+next =>
+  repeat
+    first
+    | assumption
+    | apply Preorder.trans
+next =>
+  intros ha; apply hb; clear hb
+  repeat
+    first
+    | assumption
+    | apply Preorder.trans
+
+theorem lt_of_le_of_lt
+        (h₀ : x ≤ y)
+        (h₁ : y < z) :
+  x < z :=
+lt_of_le_of_lt_of_le h₀ h₁ (Reflexive.refl _)
+
+theorem lt_of_lt_of_le
+        (h₁ : x < y)
+        (h₂ : y ≤ z) :
+  x < z :=
+lt_of_le_of_lt_of_le (Reflexive.refl _) h₁ h₂
+
+end Preorder
 
 class PartialOrder extends Preorder α where
   antisymm {x y : α} : x ≤ y → y ≤ x → x = y
@@ -180,6 +213,9 @@ instance : @DecidableRel α (.≤.)
   show compare x y ≠ Ordering.gt ↔ x ≤ y
   rw [← not_lt, ← compare_eq_gt_iff]
   refl
+
+instance : BEq α where
+  beq x y := decide (x = y)
 
 open Ordering Ordering.Spec
 
