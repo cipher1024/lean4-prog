@@ -100,6 +100,7 @@ termination_by zipWith x y => (x.length, y.length)
 end defs
 
 -- def R : Nat × α → Nat × α → Prop := (InvImage (.<.) Prod.fst)
+open List
 
 theorem All_LT_of_lt_of_All_LT [LE α] [Preorder α]
         {xs : List α}
@@ -127,7 +128,7 @@ next =>
 variable [LE k] [DecidableTotalOrder k]
 variable (f : k → These α β → Option γ)
 
-open Std.AssocList
+open List Std.AssocList
 -- #check @zipWith
 
 @[auto]
@@ -213,6 +214,7 @@ termination_by Sorted_zipWith x y _ _ => (x.length, y.length)
 
 end Std.AssocList
 
+open List
 structure OrdMap (α : Type u) [LT α] (β : Type v) where
   vals : AssocList α β
   sorted : Sorted2 (.<.) vals.keys
