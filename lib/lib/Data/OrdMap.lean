@@ -102,19 +102,6 @@ end defs
 -- def R : Nat × α → Nat × α → Prop := (InvImage (.<.) Prod.fst)
 open List
 
-theorem All_LT_of_lt_of_All_LT [LE α] [Preorder α]
-        {xs : List α}
-        (Hij : j ≤ i)
-        (Hxs : All (i < .) xs) :
-  All (j < .) xs := by
-induction Hxs
-<;> constructor
-next x xs h₀ h₁ h₂ =>
-  apply Preorder.lt_of_le_of_lt
-  <;> assumption
-next =>
-  assumption
-
 -- @[simp]
 -- theorem Sorted_map_map :
 --   Sorted2 R (List.map (Prod.map id fy) ys) ↔

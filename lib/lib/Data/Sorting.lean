@@ -1,4 +1,5 @@
 
+import Lib.Order.Basic
 import Lib.Tactic
 import Std.Data.AssocList
 
@@ -9,6 +10,19 @@ inductive All (P : α → Prop) : List α → Prop where
   | cons {x xs} : P x → All P xs → All P (x :: xs)
 
 attribute [auto] All.nil All.cons
+
+theorem All_LT_of_lt_of_All_LT [LE α] [Preorder α]
+        {xs : List α}
+        (Hij : j ≤ i)
+        (Hxs : All (i < .) xs) :
+  All (j < .) xs := by
+induction Hxs
+<;> constructor
+next x xs h₀ h₁ h₂ =>
+  apply Preorder.lt_of_le_of_lt
+  <;> assumption
+next =>
+  assumption
 
 inductive Sorted (R : α → α → Prop) : List α → Prop where
   | nil : Sorted R []
@@ -26,6 +40,36 @@ inductive Sorted2 (R : α → α → Prop) : List α → Prop where
     Sorted2 R (x :: xs)
 
 attribute [auto] Sorted2.nil Sorted2.cons
+
+section iff
+
+variable [LE α] [Preorder α]
+
+theorem Sorted_iff_Sorted2 {xs : List α} :
+  Sorted (.<.) xs ↔ Sorted2 (.<.) xs := by
+constructor <;> intro h
+next =>
+  induction h
+  next => constructor
+  next => repeat constructor
+  next ih =>
+    have ih' := ih
+    cases ih' with | cons h₀ h₁ =>
+    constructor <;> try auto
+    constructor; assumption
+    apply All_LT_of_lt_of_All_LT _ h₀
+    auto
+next =>
+  induction h
+  next => constructor
+  next x xs h₀ h₁ h₂ =>
+    cases xs
+    next => constructor
+    next =>
+      cases h₀
+      constructor <;> assumption
+
+end iff
 
 inductive Sublist : (xs ys : List α) → Prop where
   | nil {xs} : Sublist [] xs
