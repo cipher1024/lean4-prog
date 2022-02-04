@@ -60,6 +60,32 @@ theorem lt_of_lt_of_le
   x < z :=
 lt_of_le_of_lt_of_le (Reflexive.refl _) h₁ h₂
 
+@[auto]
+theorem le_of_lt : x < y → x ≤ y :=
+by rw [lt_iff]; auto
+
+instance : @Trans α α α LE.le LE.le LE.le where
+  trans := Preorder.trans
+
+instance : @Trans α α α LT.lt LT.lt LT.lt where
+  trans {x y z} h₀ h₁ := lt_of_le_of_lt (le_of_lt h₀) h₁
+
+theorem indirect_le_l {x y : α} :
+  x ≤ y ↔ ∀ z, z ≤ x → z ≤ y := by
+constructor
+next =>
+  intros; trans x <;> auto
+next =>
+  intros h; apply h; refl
+
+theorem indirect_le_r {x y : α} :
+  x ≤ y ↔ ∀ z, y ≤ z → x ≤ z := by
+constructor
+next =>
+  intros; trans y <;> auto
+next =>
+  intros h; apply h; refl
+
 end Preorder
 
 class PartialOrder extends Preorder α where
@@ -81,9 +107,25 @@ next =>
 next =>
   cases h <;> auto
 
-@[auto]
-theorem le_of_lt : x < y → x ≤ y :=
-by rw [lt_iff]; auto
+theorem indirect_eq_l {x y : α} :
+  x = y ↔ ∀ z, z ≤ x ↔ z ≤ y := by
+constructor
+next =>
+  intros h z; subst h; refl
+next =>
+  intros h; apply antisymm
+  . rw [← h]; refl
+  . rw [h]; refl
+
+theorem indirect_eq_r {x y : α} :
+  x = y ↔ ∀ z, x ≤ z ↔ y ≤ z := by
+constructor
+next =>
+  intros h z; subst h; refl
+next =>
+  intros h; apply antisymm
+  . rw [h]; refl
+  . rw [← h]; refl
 
 end PartialOrder
 
@@ -229,6 +271,127 @@ theorem compareSpec' {x y : α} {cmp}
   (h : compare x y = cmp):
   Ordering.Spec x y cmp := by
 rw [← h]; apply compareSpec
+
+theorem and_comm {p q : Prop} :
+  p ∧ q ↔ q ∧ p := by auto
+
+theorem iff_and_iff_implies_l {p q : Prop} :
+  (p ↔ p ∧ q) ↔ (p → q) := by
+constructor
+next =>
+  intro h; rw [h]; auto
+next =>
+  intro h
+  try auto
+
+theorem iff_and_iff_implies_r {p q : Prop} :
+  (p ↔ q ∧ p) ↔ (p → q) := by
+constructor
+next =>
+  intro h; rw [h]; auto
+next =>
+  intro h
+  try auto
+
+@[simp]
+theorem max_le_iff {x y z : α} :
+  max x y ≤ z ↔ x ≤ z ∧ y ≤ z := by
+simp [max]; split
+<;> simp [iff_and_iff_implies_l, iff_and_iff_implies_r]
+<;> intro h
+next =>
+  trans x <;> auto
+next h' =>
+  rw [not_lt] at h'
+  trans y <;> auto
+
+@[simp]
+theorem min_le_iff {x y z : α} :
+  z ≤ min x y ↔ z ≤ x ∧ z ≤ y := by
+simp [min]; split
+<;> simp [iff_and_iff_implies_l, iff_and_iff_implies_r]
+<;> intro h
+next =>
+  trans x <;> auto
+next h' =>
+  rw [not_le] at h'
+  trans y <;> auto
+
+@[auto]
+theorem le_max_l {x y : α} :
+  x ≤ max x y :=
+by rw [indirect_le_r]; simp; auto
+
+@[auto]
+theorem le_max_r {x y : α} :
+  y ≤ max x y :=
+by rw [indirect_le_r]; simp; auto
+
+@[auto]
+theorem min_le_l {x y : α} :
+  min x y ≤ x :=
+by rw [indirect_le_l]; simp; auto
+
+@[auto]
+theorem min_le_r {x y : α} :
+  min x y ≤ y :=
+by rw [indirect_le_l]; simp; auto
+
+theorem max_comm {x y : α} :
+  max x y = max y x := by
+rw [indirect_eq_r]; simp; auto with 7
+
+theorem min_comm {x y : α} :
+  min x y = min y x := by
+rw [indirect_eq_l]; simp; auto with 7
+
+theorem max_assoc {x y z : α} :
+  max (max x y) z = max x (max y z) := by
+rw [indirect_eq_r]; simp; auto with 8
+
+theorem min_assoc {x y z : α} :
+  min (min x y) z = min x (min y z) := by
+rw [indirect_eq_l]; simp; auto with 8
+
+@[simp]
+theorem max_eq_self_iff_l {x y : α} :
+  max x y = x ↔ y ≤ x := by
+constructor
+next =>
+  intros h; rw [← h]; auto
+next =>
+  intros h; rw [indirect_eq_r]; simp
+  intros z
+  constructor <;> intros h'
+  next => auto
+  next =>
+    constructor; auto
+    trans x <;> auto
+
+@[simp]
+theorem max_eq_self_iff_r {x y : α} :
+  max x y = y ↔ x ≤ y := by
+rw [max_comm, max_eq_self_iff_l]; refl
+
+@[simp]
+theorem min_eq_self_iff_l {x y : α} :
+  min x y = x ↔ x ≤ y := by
+constructor
+next =>
+  intros h; rw [← h]; auto
+next =>
+  intros h; rw [indirect_eq_l]; simp
+  intros z
+  constructor <;> intros h'
+  next => auto
+  next =>
+    constructor; auto
+    trans x <;> auto
+
+@[simp]
+theorem min_eq_self_iff_r {x y : α} :
+  min x y = y ↔ y ≤ x := by
+rw [min_comm, min_eq_self_iff_l]; refl
 
 end DecidableTotalOrder
 
