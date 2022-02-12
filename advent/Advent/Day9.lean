@@ -1,6 +1,7 @@
 
 import Std.Data.HashSet
 import Lib.Data.String.Basic
+import Lib.Meta.Dump
 import Advent.IO
 
 namespace Day9

@@ -15,3 +15,5 @@ import Lib.Equiv
 import Lib.Function
 import Lib.Logic.Classical
 import Lib.Order.Basic
+import Lib.Meta.Dump
+import Lib.Meta.Opaque

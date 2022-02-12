@@ -79,14 +79,14 @@ withFreshMacroScope do
               f a } )
     let setter ← instantiateMVars
       (← Term.elabTerm setter (some setterT))
-    let setter ← addDef (n.mkStr "modify")
+    let setter ← addDef [] (n.mkStr "modify")
       (← mkForallFVars vs setterT)
       (← mkLambdaFVars vs setter)
     setInlineAttribute setter
     -- let ppSetter ← ppExpr setter
     let mk ← mkAppOptM ``Lens.mk
       #[s, t, prj, ← mkAppOptM setter <| vs.map some]
-    discard <| addDef n
+    discard <| addDef [] n
       (← mkForallFVars vs lensT)
       (← mkLambdaFVars vs mk)
     setInlineAttribute n

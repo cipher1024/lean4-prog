@@ -5,7 +5,9 @@ import Lib.Data.Nat
 import Lib.Data.Quot
 import Lib.Data.Traversable
 import Lib.Equiv
+import Lib.Meta.Dump
 import Lib.Tactic
+
 import Advent.IO
 
 section day7
