@@ -109,24 +109,33 @@ let some a ← getFieldInfo' s field |>.run
     | throwError "cannot find field info for {s}.{field}"
 return a
 
-def addDef (n : Name) (t : Expr) (d : Expr) : MetaM Name := do
+def addDef (us : List Name) (n : Name) (t : Expr) (d : Expr) : MetaM Name := do
 let t ← instantiateMVars t
 let d ← instantiateMVars d
 addAndCompile
   <| Declaration.defnDecl
   <| DefinitionVal.mk
-    (ConstantVal.mk n [] t) d
+    (ConstantVal.mk n us t) d
     (ReducibilityHints.regular 10)
     DefinitionSafety.safe
 n
 
-def addThm (n : Name) (t : Expr) (d : Expr) : MetaM Name := do
+def addConst (us : List Name) (n : Name) (t : Expr) (d : Expr) : MetaM Name := do
+let t ← instantiateMVars t
+let d ← instantiateMVars d
+addAndCompile
+  <| Declaration.opaqueDecl
+  <| OpaqueVal.mk
+    (ConstantVal.mk n us t) d false
+n
+
+def addThm (us : List Name) (n : Name) (t : Expr) (d : Expr) : MetaM Name := do
 let t ← instantiateMVars t
 let d ← instantiateMVars d
 addDecl
   <| Declaration.thmDecl
   <| TheoremVal.mk
-    (ConstantVal.mk n [] t) d
+    (ConstantVal.mk n us t) d
 n
 
 def Simp.Result.proof (r : Simp.Result) : MetaM Expr :=

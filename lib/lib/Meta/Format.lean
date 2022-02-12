@@ -77,7 +77,7 @@ instance : ToFormatM TacticM GoalList where
       gs := s!"{gs.length} Goals" :: gs
     return Format.joinSep (gs.map Format.indentD) Format.line
 
-instance [ToFormatM MetaM α] : ToFormatM TacticM α where
+instance [ToFormatM MetaM α] [MonadLiftT MetaM m] : ToFormatM m α where
   formatM x := Meta.liftMetaM <| formatM x
 
 end Lean
