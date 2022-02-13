@@ -21,6 +21,8 @@ open Meta
 syntax (name := opaqueDef)
    declModifiers "opaque " «def» : command
 
+-- opaque struct, instance, inductive
+
 initialize registerTraceClass `opaque.decls
 
 def proveNewEqn (t₀ : Expr) (eqnN name name' defN : Name) : MetaM Name := do
