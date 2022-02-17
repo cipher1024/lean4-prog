@@ -76,4 +76,6 @@ instance : LawfulTraversable List where
     simp [traverse]
     induction x <;> simp [List.mapA] <;> auto
 
+
+
 end List
