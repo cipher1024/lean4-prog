@@ -27,7 +27,7 @@ elab_rules : command
         if isPrivateDeclNamed n id
           then  n :: l
           else l ) []
-  let str _ s _ ← id
+  let str _ s _ := id
     | throwError "invalid name: {id}"
   match ls with
   | [] => throwError "no matches"

@@ -6,6 +6,7 @@ import Lean.Meta.Tactic.Split
 import Lean.PrettyPrinter
 import Lib.Data.List.Control
 import Lib.Data.Array.Control
+import Lib.Meta.Dump
 
 class Reflexive (R : α → α → Prop) where
   refl x : R x x
@@ -31,18 +32,23 @@ instance : Reflexive (.→.) where
 instance : @Reflexive Nat LE.le where
   refl := Nat.le_refl
 
-macro "rintro1" t:term : tactic =>
+macro "rintro1 " t:term : tactic =>
   `(tactic| intro x; match x with | $t:term => ?_)
 
-syntax "rintro" term,* : tactic
+syntax "rintro " term,* : tactic
 
 macro_rules
 | `(tactic| rintro ) => `(tactic| skip)
 | `(tactic| rintro $t, $ts) =>
-  `(tactic| rintro1 $t; rintro $ts )
+  `(tactic| rintro1 $t <;> rintro $ts )
 
 macro "obtain " p:term " from " d:term : tactic =>
   `(tactic| match $d:term with | $p:term => ?_)
+
+macro "obtain " p:term " : " q:term " from " d:term : tactic =>
+  `(tactic|
+    have h : $q := $d;
+    match h with | $p:term => ?_)
 
 namespace Lean.Elab.Tactic
 open Lean.Meta
@@ -111,18 +117,31 @@ initialize registerTraceClass `refl
 initialize registerTraceClass `substAll
 
 open Expr Lean.Meta
--- #check or
+
 def applyUnifyAll (g : MVarId) (lmm : Expr) (allowMVars := false) : MetaM (List MVarId) := do
   trace[auto.lemmas]"try {lmm}"
   trace[auto.lemmas]"type: {(← inferType lmm)}"
   trace[auto.goal]"goal {(← inferType (mkMVar g))}"
   let gs ← try apply g lmm
            catch e =>
+             trace[auto.apply.failure]"error: {lmm}"
              trace[auto.apply.failure]"error: {e.toMessageData}"
              throw e
   trace[auto.lemmas]"{gs.length} new goals"
-  guard (allowMVars ∨ (← gs.allM λ v => do
-    (← inferType (← inferType (mkMVar v))).isProp))
+  let ls ← gs.mapM λ v => inferType (mkMVar v)
+  trace[auto.lemmas]"{ls} all new goals"
+  let ls ← gs.mapM λ v => do inferType (← inferType (mkMVar v))
+  trace[auto.lemmas]"{ls} all new goals"
+  let ls ← gs.mapM λ v => do
+    return (← inferType (← inferType (mkMVar v))).isProp
+  trace[auto.lemmas]"{ls} all new goals"
+  let b ← gs.allM λ v => do
+    return (← inferType (← inferType (mkMVar v))).isProp
+  trace[auto.lemmas]"{b} all new goals are prop"
+  if ¬ (allowMVars ∨ b) then
+    trace[auto.lemmas]"failed"
+    failure
+  trace[auto.lemmas]"success"
   return gs
 
 def tacRefl : TacticM Unit := do
@@ -317,7 +336,7 @@ def iterate [Monad m] [MonadLift TacticM m]: Nat → m PUnit → m PUnit
 | Nat.succ n, tac => do
   unless (← isDone) do
     -- tryTac (do
-      ( traceM `auto.iterate s!"iterate n = {n}" : TacticM Unit)
+      ( traceM `auto.iterate <| return s!"iterate n = {n}" : TacticM Unit)
       tac
       allGoals $ iterate n tac
 
@@ -380,11 +399,16 @@ def mkAutoAttr (attrName : Name) (attrDescr : String) (ext : AutoExtension) : IO
     add   := fun declName stx attrKind =>
       let go : MetaM Unit := do
         let info ← getConstInfo declName
-        ext.add declName attrKind
+        match info with
+        | ConstantInfo.inductInfo i =>
+          for c in i.ctors do
+            ext.add c attrKind
+        | _ =>
+          ext.add declName attrKind
       discard <| go.run {} {}
     erase := fun declName => do
-      let s ← ext.getState (← getEnv)
-      let s ← s.erase declName
+      let s := ext.getState (← getEnv)
+      let s := s.erase declName
       modifyEnv fun env => ext.modifyState env fun _ => s
   }
 
@@ -400,30 +424,31 @@ def registerAutoAttr (attrName : Name) (attrDescr : String) (extName : Name := a
   mkAutoAttr attrName attrDescr ext
   return ext
 
-def registerAutoAttribute {α : Type} [Inhabited α] (impl : ParametricAttributeImpl α) : IO (ParametricAttribute α) := do
-  let ext : PersistentEnvExtension (Name × α) (Name × α) (NameMap α) ← registerPersistentEnvExtension {
-    name            := impl.name
-    mkInitial       := pure {}
-    addImportedFn   := fun s => impl.afterImport s *> pure {}
-    addEntryFn      := fun (s : NameMap α) (p : Name × α) => s.insert p.1 p.2
-    exportEntriesFn := fun m =>
-      let r : Array (Name × α) := m.fold (fun a n p => a.push (n, p)) #[]
-      r.qsort (fun a b => Name.quickLt a.1 b.1)
-    statsFn         := fun s => "parametric attribute" ++ Format.line ++ "number of local entries: " ++ format s.size
-  }
-  let attrImpl : AttributeImpl := {
-    name  := impl.name
-    descr := impl.descr
-    add   := fun decl stx kind => do
-      unless kind == AttributeKind.global do throwError "invalid attribute '{impl.name}', must be global"
-      let env ← getEnv
-      let val ← impl.getParam decl stx
-      let env' := ext.addEntry env (decl, val)
-      setEnv env'
-      try impl.afterSet decl val catch _ => setEnv env
-  }
-  registerBuiltinAttribute attrImpl
-  pure { attr := attrImpl, ext := ext }
+-- def registerAutoAttribute {α : Type} [Inhabited α] (impl : ParametricAttributeImpl α) : IO (ParametricAttribute α) := do
+--   let ext : PersistentEnvExtension (Name × α) (Name × α) (NameMap α) ← registerPersistentEnvExtension {
+--     name            := impl.name
+--     mkInitial       := pure {}
+--     addImportedFn   := fun s => impl.afterImport s *> pure {}
+--     addEntryFn      := fun (s : NameMap α) (p : Name × α) => s.insert p.1 p.2
+--     exportEntriesFn := fun m =>
+--       let r : Array (Name × α) := m.fold (fun a n p => a.push (n, p)) #[]
+--       r.qsort (fun a b => Name.quickLt a.1 b.1)
+--     statsFn         := fun s => "parametric attribute" ++ Format.line ++ "number of local entries: " ++ format s.size
+--   }
+--   let attrImpl : AttributeImpl := {
+--     name  := impl.name
+--     descr := impl.descr
+--     add   := fun decl stx kind => do
+--       unless kind == AttributeKind.global do throwError "invalid attribute '{impl.name}', must be global"
+--       let env ← getEnv
+--       let val ← impl.getParam decl stx
+--       -- let _ :=
+--       let env' := ext.addEntry env (decl, val)
+--       setEnv env'
+--       try impl.afterSet decl val catch _ => setEnv env
+--   }
+--   registerBuiltinAttribute attrImpl
+--   pure { attr := attrImpl, ext := ext }
 
 
 initialize autoExtension : AutoExtension ← registerAutoAttr `auto "auto closing lemma"
@@ -445,10 +470,21 @@ open Lean Meta
 --     else
 --       lemmas
 
-
 def getAutoLemmas [Monad m] [MonadEnv m] : m NameSet := do
-  let d := (← autoExtension.getState (← getEnv))
-  return d
+  let ns := autoExtension.getState (← getEnv)
+  -- let mut ns' : NameSet := {}
+  -- for n in ns do
+  --   let env ← getEnv
+  --   let some info := env.find? n
+  --       | return {}
+  --   match info with
+  --   | ConstantInfo.inductInfo i =>
+  --     for c in i.ctors do
+  --       ns' := ns'.insert c
+  --   | _ =>
+  --     ns' := ns'.insert n
+
+  return ns
     |>.insert ``True.intro
     |>.insert ``Iff.intro
     |>.insert ``And.intro
@@ -470,7 +506,7 @@ open Lean
 def Meta.applyAuto (ns : Array Name) (allowMVars := false) : SearchTacticM δ Unit :=
 SearchTacticM.focus do
   let n ← SearchT.pick' ns
-  traceM `auto.lemmas s!"Lemma: {n}"
+  traceM `auto.lemmas <| return s!"Lemma: {n}"
   let mut lmm ← (mkConstWithFreshMVarLevels n : TacticM _)
   Lean.Elab.Term.synthesizeSyntheticMVars true
   lmm ← instantiateMVars lmm
@@ -480,7 +516,7 @@ def Meta.applyAssumption (allowMVars := false) : SearchTacticM δ Unit := Search
   let x ← SearchT.pick' (← getLCtx).getFVarIds
   let lctx ← getLCtx
   guard (¬ (lctx.get! x).isAuxDecl)
-  traceM `auto.lemmas s!"Hyp: {lctx.get! x |>.userName}"
+  traceM `auto.lemmas <| return s!"Hyp: {lctx.get! x |>.userName}"
   liftMetaTactic (applyUnifyAll . (mkFVar x) allowMVars)
 
 elab "#print" "auto_db" : command => do
@@ -524,11 +560,11 @@ def withMainContext' (x : SearchTacticM δ α) : SearchTacticM δ α :=
 def Meta.tacAutoStep (ns : Array Name) (allowMVars := false) : SearchTacticM δ Unit :=
 withMainContext' $
   Lean.Elab.Tactic.tacRefl <|>
-  liftMetaMAtMain Meta.contradiction <|>
+  liftMetaTactic (do Meta.contradiction .; return []) <|>
   Meta.applyAssumption allowMVars <|>
   Meta.destructHyp <|>
   liftMetaTactic1 ((some ∘ Prod.snd) <$> intro1 .) <|>
-  Meta.applyAuto ns
+  Meta.applyAuto (allowMVars := allowMVars) ns
   -- Meta.applyAuto ns allowMVars <|>
   -- liftMetaTactic1 ((some ∘ Prod.snd) <$> intro1 .)
 
@@ -547,7 +583,7 @@ elab "auto" : tactic => do
   withMainContext (Meta.tacAuto (← getAutoList) none).run
 
 elab "auto" " with " n:num : tactic => do
-  withMainContext (Meta.tacAuto (← getAutoList) (← Syntax.isNatLit? n)).run
+  withMainContext (Meta.tacAuto (← getAutoList) (Syntax.isNatLit? n)).run
 
 elab "auto" "[" ids:ident,* "]": tactic => do
   let ids ← getAutoList (← ids.getElems.mapM resolveGlobalConstNoOverload)
@@ -555,12 +591,14 @@ elab "auto" "[" ids:ident,* "]": tactic => do
 
 elab "auto" "[" ids:ident,* "]" " with " n:num : tactic => do
   let ids ← getAutoList (← ids.getElems.mapM resolveGlobalConstNoOverload)
-  withMainContext (Meta.tacAuto ids (← Syntax.isNatLit? n)).run
+  withMainContext (Meta.tacAuto ids (Syntax.isNatLit? n)).run
 
 elab "eauto" : tactic => do
   withMainContext (Meta.tacAuto (← getAutoList) none true).run
 elab "auto_step" : tactic => do
   withMainContext (Meta.tacAutoStep (← getAutoList)).run
+elab "eauto_step" : tactic => do
+  withMainContext (Meta.tacAutoStep (allowMVars := true) (← getAutoList)).run
 elab "apply_auto" : tactic => do
   withMainContext (Meta.applyAuto (← getAutoList)).run
 
@@ -568,12 +606,20 @@ elab "eauto" "[" ids:ident,* "]" : tactic => do
   let ids ← getAutoList (← ids.getElems.mapM resolveGlobalConstNoOverload)
   withMainContext (Meta.tacAuto ids none true).run
 
+elab "eauto" "[" ids:ident,* "]" " with " n:num : tactic => do
+  let ids ← getAutoList (← ids.getElems.mapM resolveGlobalConstNoOverload)
+  withMainContext (Meta.tacAuto ids (Syntax.isNatLit? n) true).run
+
 syntax "change" term "at" ident : tactic
 
 elab "change" t:term "at" h:ident : tactic =>
   withMainContext do
     let h ← getFVarId h
     liftMetaTactic1 (changeLocalDecl . h (← elabTerm t none))
+
+elab "apply_assumption" : tactic =>
+  withMainContext (Meta.applyAssumption true).run
+
 
 -- macro "auto" : tactic =>
 --   `(tactic|
@@ -617,12 +663,31 @@ elab "all_but_first " tac:tacticSeq : tactic => do
   let mvarId :: mvarIds ← getUnsolvedGoals
     | throwNoGoalsToBeSolved
   let mut gs := #[mvarId]
+  -- print_vars![mvarIds.length]
   for g in mvarIds do
-    setGoals [g]
-    evalTactic tac
-    let g' ← getGoals
-    gs := gs.appendList g'
+    -- print_vars![asGoal g]
+    if ← not <$> isExprMVarAssigned g then
+      setGoals [g]
+      tryTac <| withMainContext <| evalTactic tac
+      -- print_vars![gs.size]
+      gs := gs.appendList (← getGoals)
+      -- print_vars![gs.size]
+  -- print_vars![gs.size]
   setGoals gs.toList
 
 macro:1 x:tactic " </> " y:tactic:0 : tactic =>
   `(tactic| focus ($x:tactic; all_but_first ($y:tactic; done)))
+
+syntax "split" "*" : tactic
+macro_rules
+  | `(tactic| split*) => `(tactic| first | split <;> split* | skip)
+
+macro "have " " ← " " : " p:term " := " proof:term : tactic =>
+  `(tactic|
+    have h : $p := $proof ;
+    rw [← h] <;> clear h )
+
+macro "have " " → " " : " p:term " := " proof:term : tactic =>
+  `(tactic|
+    have h : $p := $proof ;
+    rw [h] <;> clear h )

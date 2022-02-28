@@ -59,8 +59,8 @@ def dumpListAux : List Syntax → TermElabM Syntax
 
 def dumpList (ls : List Syntax) : TermElabM Expr := do
   let out ← ls.mapM (λ x => do
-    toString (← Lean.PrettyPrinter.ppTerm x))
-  let len ← out.map String.length |>.maximum? |>.get!
+    return toString (← Lean.PrettyPrinter.ppTerm x))
+  let len := out.map String.length |>.maximum? |>.get!
   let out := out.map <| (padding len . ++ " = ")
   let lines ← out.zipWithM ls λ x y =>
     `($(Syntax.mkStrLit x) ++ toString $y)
@@ -70,8 +70,8 @@ def dumpList (ls : List Syntax) : TermElabM Expr := do
 
 def dumpListMonadic (ls : List Syntax) : TermElabM Expr := do
   let out ← ls.mapM (λ x => do
-    toString (← Lean.PrettyPrinter.ppTerm x))
-  let len ← out.map String.length |>.maximum? |>.get!
+    return toString (← Lean.PrettyPrinter.ppTerm x))
+  let len := out.map String.length |>.maximum? |>.get!
   let out := out.map <| (padding len . ++ " = ")
   let lines ← out.zipWithM ls λ x y =>
     `(($(Syntax.mkStrLit x), Std.ToFormatM.formatM $y))

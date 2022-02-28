@@ -66,7 +66,7 @@ theorem drop_nil n : (@nil α).drop n = [] := by
 cases n <;> refl
 
 theorem cons_drop {i} {xs : List α} (h : i < length xs) :
-  get xs i h :: drop i.succ xs = drop i xs := by
+  get xs ⟨i, h⟩ :: drop i.succ xs = drop i xs := by
 induction xs generalizing i;
 . cases h
 cases i <;> simp [get, drop, *] at h ⊢

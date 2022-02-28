@@ -498,7 +498,7 @@ let fields := getStructureFieldsFlattened env struct
 let flags ← fields.toList.filterMapM <| mkFlagDescr struct
 let inst ← mkCLIArgRecordInst' struct flags
 addInstance inst AttributeKind.«global» 0
-inst
+return inst
 
 def test : MetaM Unit := do
 let env ← getEnv

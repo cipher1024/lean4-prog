@@ -4,7 +4,7 @@ import Lib.Data.MonoFunctor
 import Lib.Data.MonoFoldable
 import Lib.Data.MonoTraversable
 import Lib.Data.List.Instances
--- import Lib.Meta.ImportPrivate
+import Lib.Meta.ImportPrivate
 
 namespace Classical
 
@@ -13,6 +13,10 @@ auto
 
 end Classical
 
+
+-- syntax "repeat " tacticSeq : tactic
+-- macro_rules
+--   | `(tactic| repeat $seq) => `(tactic| first | ($seq); repeat $seq | skip)
 
 namespace String
 
@@ -140,17 +144,38 @@ instance : LawfulMonoTraversable String Char where
     auto [LawfulTraversable.traverse_sim, ApplicativeRel.naturality]
 
 theorem toList_inj {s₀ s₁ : String} :
-  s₀.toList = s₁.toList → s₀ = s₁ := sorry
+  s₀.toList = s₁.toList → s₀ = s₁ :=
+by intro h; cases s₀; cases s₁; cases h; rfl
 
-@[simp]
-theorem drop_mk_nil :
-  (String.mk []).drop n = String.mk [] := sorry
+protected def utf8ByteSizeAux : List Char → Nat → Nat
+  | List.nil,       r => r
+  | List.cons c cs, r => String.utf8ByteSizeAux cs (r + (csize c))
 
-@[simp]
-theorem drop_zero (xs : String) :
-  xs.drop 0 =
-  xs := sorry
+theorem le_utf8ByteSizeAux xs n :
+  n + List.length xs ≤ String.utf8ByteSizeAux xs n := by
+induction xs generalizing n
+<;> simp only [List.length, String.utf8ByteSizeAux, Nat.add_one, Nat.add_succ_eq_succ_add]
+next => simp [Nat.add_zero]; refl
+next ih =>
+  trans _ </> try apply ih
+  -- rw [Nat.add_succ_eq_succ_add]
+  apply Nat.add_le_add_right
+  rw [Nat.succ_eq_add_one]
+  apply Nat.add_le_add_left
+  simp [csize, Char.utf8Size, UInt32.ofNatCore, UInt32.toNat]
+  split* <;> auto
 
+theorem bsize_def s :
+  String.bsize ⟨s⟩ = String.utf8ByteSizeAux s 0 := by
+simp [String.bsize, utf8ByteSize]
+generalize 0 = k
+induction s generalizing k <;> auto
+
+theorem le_bsize xs :
+  List.length (String.toList xs) ≤ String.bsize xs  := by
+rw [bsize_def]
+trans _ </> apply le_utf8ByteSizeAux
+simp [toList]; refl
 
 protected def utf8ExtractAux₂ : List Char → Pos → Pos → List Char
   | [],    _, _ => []
@@ -201,8 +226,101 @@ next x xs ih =>
 -- #check Classical.em
 -- #check byContradiction
 
+@[simp]
+theorem extract_nil :
+  extract ⟨[]⟩ i j = "" := sorry
+
+@[simp]
+theorem extract_cons x xs :
+  extract ⟨x :: xs⟩ i j = extract ⟨xs⟩ (i - csize x) (j - csize x) := by
+simp [extract_def, String.utf8ExtractAux₁, String.utf8ExtractAux₂]
+split
+next h =>
+  have h' : i - csize x ≥ j - csize x := sorry
+  rw [if_pos h']
+next h =>
+  have h' : ¬ i - csize x ≥ j - csize x := sorry
+  rw [if_neg h']; apply congrArg
+  have h₂ : ¬ 0 = j := sorry
+  byCases h₃ : 0 = i
+  next =>
+    rw [if_pos h₃, if_neg h₂]
+  -- split*
+next =>
+  skip
+  -- split
+#exit
+
+@[simp]
+theorem drop_mk_nil :
+  (String.mk []).drop n = String.mk [] := by
+simp [drop, toSubstring, Substring.drop, Substring.toString, extract_def]
+split <;> rfl
+
+@[simp]
+theorem toList_mk {x : List Char} :
+  String.toList ⟨x⟩ = x := rfl
+
 macro "falseHyp" h:ident : tactic =>
   `(apply Classical.contradiction $h)
+
+@[simp]
+theorem toList_append {s₀ s₁ : String} :
+  (s₀ ++ s₁).toList = s₀.toList ++ s₁.toList :=
+rfl
+
+@[simp]
+theorem extract_eq_nil {s} :
+  extract s i i = "" := sorry
+
+
+theorem extract_eq_self' {s} :
+  extract s 0 i ++ extract s i s.bsize = s := by
+cases s; next xs =>
+-- generalize 0 = b
+apply String.toList_inj; simp
+-- #exit
+induction xs
+-- <;> simp [extract_def]
+next => simp
+next x xs ih =>
+  cases i
+  skip
+
+#exit
+next =>
+  split*
+  <;> next => rfl
+next =>
+  split
+  next h =>
+    have h := Nat.le_antisymm h (Nat.zero_le _)
+    subst h; clear h
+    rw [if_neg]
+    next =>
+      simp [String.utf8ExtractAux₁, String.utf8ExtractAux₂]
+      rw [if_neg]
+      skip
+  skip
+-- next => split <;> rfl
+-- next xs ih =>
+  -- split
+-- next =>
+  -- skip
+  -- have := le_bsize ⟨xs⟩
+--   simp at this
+--   have := Nat.le_trans this h
+--   have := Nat.le_antisymm this (Nat.zero_le _)
+--   rw [List.length_eq_zero] at this
+--   subst this; rfl
+-- next xs h =>
+--   simp [bsize, utf8ByteSize]
+--   skip
+
+@[simp]
+theorem drop_zero (xs : String) :
+  xs.drop 0 = xs := by
+simp [drop, toSubstring, Substring.drop, Substring.toString, extract_eq_self, Substring.nextn]
 
 -- #exit
 @[simp]
@@ -218,14 +336,10 @@ next =>
   next h =>
     falseHyp h
     simp [bsize, utf8ByteSize]
-    simp [String.utf8ByteSizeAux]
+    -- simp [String.utf8ByteSizeAux]
   -- rw [String.utf8ExtractAux₁._eq_2]
   -- simp only [String.utf8ExtractAux₁]
   skip
-
-@[simp]
-theorem toList_mk {x : List Char} :
-  String.toList ⟨x⟩ = x := rfl
 
 @[simp]
 theorem toList_drop {s : String} :
@@ -233,11 +347,6 @@ theorem toList_drop {s : String} :
 cases s with | mk s =>
 induction s generalizing n
 <;> cases n <;> simp [*, List.drop]
-
-@[simp]
-theorem toList_append {s₀ s₁ : String} :
-  (s₀ ++ s₁).toList = s₀.toList ++ s₁.toList :=
-rfl
 
 @[simp]
 theorem length_toList {s : String} :

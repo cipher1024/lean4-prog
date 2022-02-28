@@ -43,6 +43,18 @@ theorem add_lt_of_lt_sub_l {m n k : Nat} :
   m < n - k → k + m < n := by
 rw [Nat.add_comm]; apply add_lt_of_lt_sub_r
 
+@[auto]
+theorem le_add_of_le_l {m n k : Nat}
+        (h : m ≤ n) :
+  m ≤ n + k :=
+by trans n <;> auto
+
+@[auto]
+theorem le_add_of_le_r {m n k : Nat}
+        (h : m ≤ k) :
+  m ≤ n + k :=
+by trans k <;> auto
+
 -- theorem add_le_of_le_sub_r {m n k : Nat} :
 --   m ≤ n - k → m + k ≤ n := by
 -- induction k generalizing m n with
@@ -382,7 +394,7 @@ focus
 theorem max_add {p q₀ q₁ : Nat} :
   max (p + q₀) (p + q₁) = p + max q₀ q₁ := by
 simp [Nat.eq_iff_forall_le_iff]; intros z
-byCases h : p ≤ z
+by_cases h : p ≤ z
 . simp [Nat.add_le_iff_l, *]
 focus
   have : ∀ q, ¬ p + q ≤ z := by
@@ -639,7 +651,7 @@ theorem pow_le_iff_le_log {x y : Nat} (h : 1 ≤ y) :
   2^x ≤ y ↔ x ≤ log2 y := by
 induction x generalizing y;
 . simp [*, Nat.zero_le]
-byCases h : 1 ≤ y / 2
+by_cases h : 1 ≤ y / 2
 focus
   have h' : 1 ≤ log2 y := by
     rw [← mul_le_iff_le_div] at h
