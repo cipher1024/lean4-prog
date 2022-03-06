@@ -48,7 +48,7 @@ def mk (size : Nat) : Window where
     simp
     have : 1 ≤ max size 1 := by
       simp [max]
-      byCases h : 1 < size <;> simp [*]
+      by_cases h : 1 < size <;> simp [*]
       apply Nat.le_of_lt h
     apply Nat.lt_of_lt_of_le _ this
     apply Nat.zero_lt_one

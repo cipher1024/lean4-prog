@@ -445,8 +445,8 @@ def rewriteImports' (file to : FilePath) : IO Bool := do
   if changed then
     for ln in lines[i:] do
       h.putStrLn ln
-    true
-  else false
+    return true
+  else return false
 
 partial def copyFile (dst src : FilePath) : IO Unit := do
 let hsrc ← Handle.mk src Mode.read false
@@ -474,7 +474,7 @@ else
 end subst
 
 def absolute (fp : FilePath) : IO FilePath := do
-normalize ((← IO.currentDir) / fp)
+return normalize ((← IO.currentDir) / fp)
 
 partial def findParentAux
         (path : FilePath) (p : FilePath → IO Bool) :
@@ -502,7 +502,7 @@ findParent (λ p => pathExists (p / "lakefile.lean")) path
 def lakeRoot (path : Option FilePath := none) : IO (Option FilePath) := OptionT.run do
 let p ← pathToLakefile path
 let cfg ← Lake.Package.load p []
-cfg.srcDir
+return cfg.srcDir
 
 namespace System.FilePath
 
@@ -543,7 +543,7 @@ open FilePath
 def mkModuleName (fn : FilePath) (root : Option FilePath := none) : IO ModuleName := do
 let some p ← match root with
              | none => lakeRoot fn
-             | some p => p
+             | some p => pure <| some p
     | throw <| IO.userError s!"{fn} is not in a 'lake' project"
 return DirEntry.ofFilePath p fn |>.toModuleName
 
@@ -559,14 +559,14 @@ liftOpt s!"{fn} does not have a parent" fn.fileStem
 
 def moduleNames (fn to : FilePath) (parent : Bool) :
     IO (Array (ModuleName × ModuleName)) := do
-let fn'  ← absolute fn
+let fn' ← absolute fn
 let to' ← absolute to
-let some root ← lakeRoot fn'
+let some root ← lakeRoot <| some fn'
   | throw <| IO.userError s!"lakefile not found for {fn}"
 let some to   ← lakeRoot to'
   | throw <| IO.userError s!"lakefile not found for {to}"
 if (← isDir fn') then
-  let fn'' ← if parent then getParent fn' else fn'
+  let fn'' ← if parent then getParent fn' else pure fn'
   let mut r := #[]
   for ⟨p, _⟩ in fn' do
     if hasExt "lean" p ∧ ¬ p.isInvisible then

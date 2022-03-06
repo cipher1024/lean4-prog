@@ -46,7 +46,7 @@ let n := struct ++ pre ++ field
 withDeclName n do
 withFieldType struct field λ vs t => do
 withFreshMacroScope do
-    let v::vs ← vs
+    let v::vs := vs
       | throwError "badly formed field type"
     let info ← getFieldInfo! struct field
   -- withLCtx lctx {} do

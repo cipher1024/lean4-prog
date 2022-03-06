@@ -212,18 +212,18 @@ def mkFieldTypeAux (vs : List Expr) (s' : Name) :
 | Expr.forallE n d b _  =>
   Lean.Meta.withLocalDeclD n d λ v =>
     if d.isConstOf s'
-    then (v :: vs, instantiateBVar (v :: vs) b)
+    then return (v :: vs, instantiateBVar (v :: vs) b)
     else mkFieldTypeAux (v :: vs) s' b
-| e => (vs, e)
+| e => return (vs, e)
 
 def mkFieldType : Name → Expr → MetaM (List Expr × Expr) :=
 mkFieldTypeAux []
 
 def typeOfField' (s field : Name) : OptionT MetaM Expr := do
 let env ← getEnv
-let s' ← OptionT.mk <| findField? env s field
-let info ← OptionT.mk <| getFieldInfo? env s' field
-let d ← OptionT.mk <| env.find? info.projFn
+let s' ← liftOption <| findField? env s field
+let info ← liftOption <| getFieldInfo? env s' field
+let d ← liftOption <| env.find? info.projFn
 let t := d.type
 Prod.snd <$> mkFieldType s' t
 
@@ -234,8 +234,8 @@ return a
 
 def getFieldInfo' (s field : Name) : OptionT MetaM StructureFieldInfo := do
 let env ← getEnv
-let s' ← OptionT.mk <| findField? env s field
-OptionT.mk <| getFieldInfo? env s' field
+let s' ← liftOption <| findField? env s field
+liftOption <| getFieldInfo? env s' field
 
 def getFieldInfo! (s field : Name) : MetaM StructureFieldInfo := do
 let some a ← getFieldInfo' s field |>.run
@@ -253,7 +253,7 @@ structure FlagDescr where
 
 def parseStringLit [Monad m] [MonadError m] (s : Syntax) :
   m String := do
-  let some x ← Syntax.isStrLit? s
+  let some x := Syntax.isStrLit? s
     | throwError "expecting string literal {s}"
   return x
 
@@ -388,7 +388,7 @@ addAndCompile
     (ConstantVal.mk n [] t) d
     (ReducibilityHints.regular 10)
     DefinitionSafety.safe
-n
+return n
 
 def mkArgParser (type : Name)
   (flags : List FlagDescr) : TermElabM Name :=
@@ -464,7 +464,7 @@ def mkUsageString (struct : Name)
 let usage := mkUsageString' flags
 let n := struct.mkStr "usageString"
 let t ← mkConstWithLevelParams ``String
-let e ← mkStrLit usage
+let e := mkStrLit usage
 println!"name: {n}"
 addDef n t e
 
@@ -498,7 +498,7 @@ let fields := getStructureFieldsFlattened env struct
 let flags ← fields.toList.filterMapM <| mkFlagDescr struct
 let inst ← mkCLIArgRecordInst' struct flags
 addInstance inst AttributeKind.«global» 0
-inst
+return inst
 
 def test : MetaM Unit := do
 let env ← getEnv

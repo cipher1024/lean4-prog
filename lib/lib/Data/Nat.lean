@@ -9,18 +9,11 @@ attribute [auto] Nat.le_add_left Nat.le_add_right
 attribute [auto] Nat.add_le_add_right Nat.add_le_add_left
 attribute [simp] Nat.add_succ Nat.succ_sub_succ Nat.lt_succ_self
 attribute [simp] Nat.pow_succ Nat.pow_zero
+attribute [simp] Nat.add_sub_cancel_left Nat.add_sub_of_le
+attribute [simp] Nat.add_sub_add_left Nat.add_sub_add_right
 
 theorem succ_inj {m n : Nat} (h : m.succ = n.succ) : m = n :=
 by cases h; refl
-
-theorem succ_pred {n} (h : 0 < n) : succ (pred n) = n := by
-cases n
-next => cases h
-next => refl
-
-@[simp]
-theorem zero_sub (n : Nat) : 0 - n = 0 := by
-  induction n <;> simp [sub_succ, *]
 
 theorem add_lt_of_lt_sub_r {m n k : Nat} :
   m < n - k → m + k < n := by
@@ -91,29 +84,6 @@ theorem sub_add_assoc {x y z : Nat} :
   x - (y + z) = x - y - z :=
 by induction z <;> simp [Nat.sub_succ, *]
 
-theorem add_sub_assoc {x y z : Nat} :
-  z ≤ y →
-  x + (y - z) = x + y - z := by
-  intro h
-  induction y generalizing z;
-  focus
-    cases h
-    simp [Nat.zero_sub, Nat.sub_zero]
-  next y ih =>
-    simp [Nat.succ_add, *]
-    cases z with
-    | zero => simp [Nat.succ_sub_succ] at *
-    | succ z =>
-      have h := Nat.le_of_succ_le_succ h
-      simp [ih, h]
-
-@[simp]
-theorem add_sub_cancel {x y : Nat} :
-  x ≤ y → x + (y - x) = y := by
-  intros h; simp [add_sub_assoc, *]
-  rw [Nat.add_comm, ← add_sub_assoc, Nat.sub_self, Nat.add_zero]
-  refl
-
 @[auto]
 theorem le_of_not_gt {x y : Nat} (h : ¬ y < x) : x ≤ y := by
 byContradiction h;
@@ -162,7 +132,7 @@ focus
 theorem pred_sub {p q} : Nat.pred p - q = Nat.pred (p - q) := by
 simp [(.-.), Sub.sub]; induction q
 . apply Nat.sub_zero
-. simp [Nat.sub, *]
+. simp [Nat.sub,sub_succ, *]
 
 theorem strong_ind {P : Nat → Prop} :
   (∀ x, (∀ y, y < x → P y) → P x) → ∀ a, P a :=
@@ -382,7 +352,7 @@ focus
 theorem max_add {p q₀ q₁ : Nat} :
   max (p + q₀) (p + q₁) = p + max q₀ q₁ := by
 simp [Nat.eq_iff_forall_le_iff]; intros z
-byCases h : p ≤ z
+by_cases h : p ≤ z
 . simp [Nat.add_le_iff_l, *]
 focus
   have : ∀ q, ¬ p + q ≤ z := by
@@ -441,39 +411,9 @@ apply Nat.not_le_of_gt h; clear h
 rw [add_le_iff_r]
 <;> auto
 
-theorem le_of_add_le_add_left {x y z : Nat}
-        (h : x + z ≤ y + z) :
-  x ≤ y := by
-induction z generalizing x y with
-| zero => simp at h; assumption
-| succ n ih => simp at h; apply ih; assumption
-
-theorem le_of_add_le_add_right {x y z : Nat}
-        (h : z + x ≤ z + y) :
-  x ≤ y := by
-simp [Nat.add_comm z] at h
-apply le_of_add_le_add_left h
-
-theorem le_of_mul_le_mul_left {x y z : Nat}
-        (h' : z > 0)
-        (h : x * z ≤ y * z) :
-  x ≤ y := by
-induction x generalizing y z with
-| zero => apply zero_le
-| succ n ih =>
-  simp [succ_mul] at h
-  -- cases h'
-  -- focus simp at h; assumption
-  -- focus
-    -- have h := le_of_add_le_add_right h
-  -- done
-  admit
-
--- open Classical
-
 theorem sub_add_self {a b : Nat} (h : b ≤ a) :
   (a - b) + b = a := by
-rw [Nat.add_comm, Nat.add_sub_assoc, Nat.add_sub_self_left]
+rw [Nat.add_comm, ← Nat.add_sub_assoc, Nat.add_sub_self_left]
 <;> assumption
 
 theorem le_add_of_sub_le_l {m n k : Nat} :
@@ -496,7 +436,7 @@ rw [eq_iff_forall_ge_iff]; intro z
 rw [← add_le_iff_r]
 constructor
 focus
-  apply le_of_add_le_add_left
+  apply Nat.le_of_add_le_add_right
 focus
   auto
 focus
@@ -639,7 +579,7 @@ theorem pow_le_iff_le_log {x y : Nat} (h : 1 ≤ y) :
   2^x ≤ y ↔ x ≤ log2 y := by
 induction x generalizing y;
 . simp [*, Nat.zero_le]
-byCases h : 1 ≤ y / 2
+by_cases h : 1 ≤ y / 2
 focus
   have h' : 1 ≤ log2 y := by
     rw [← mul_le_iff_le_div] at h

@@ -10,13 +10,13 @@ class ToFormatM (m : Type → Type v) (α : Type u) where
 open ToFormatM
 
 instance [Monad m] [ToFormatM m α] : ToFormatM m (List α) where
-  formatM x := do format (← x.mapM formatM)
+  formatM x := do return format (← x.mapM formatM)
 
 instance [Monad m] [ToFormatM m α] : ToFormatM m (Subarray α) where
-  formatM x := do format (← x.toArray.mapM formatM)
+  formatM x := do return format (← x.toArray.mapM formatM)
 
 instance [Monad m] [ToFormatM m α] : ToFormatM m (Array α) where
-  formatM x := do format (← x.mapM formatM)
+  formatM x := do return format (← x.mapM formatM)
 
 instance [MonadLiftT m n] [ToFormatM m α] : ToFormatM n α where
   formatM x := liftM (formatM x : m _)

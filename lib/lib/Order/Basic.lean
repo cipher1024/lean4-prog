@@ -101,7 +101,7 @@ theorem le_iff_lt_or_eq : x ≤ y ↔ x < y ∨ x = y := by
 rw [lt_iff]
 constructor <;> intros h
 next =>
-  byCases h : y ≤ x; right
+  by_cases h : y ≤ x; right
   . auto [antisymm]
   . left; auto
 next =>
@@ -414,7 +414,7 @@ instance : DecidableTotalOrder Nat where
     simp [compare, compareOfLessAndEq]
     split; auto
     next x y h =>
-      byCases h' : x = y
+      by_cases h' : x = y
       next =>
         rw [ite_pos] </> assumption
         constructor

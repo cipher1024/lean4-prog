@@ -4,9 +4,10 @@ open Lake DSL
 package lean_tools {
   -- binRoot := "."
   -- defaultFacet := PackageFacet.oleans
+  defaultFacet := PackageFacet.bin
   dependencies :=
     #[ { name := `lake,
          src := Source.git
            "https://github.com/leanprover/lake"
-           "3cd49e6e180c1837adb495f48016c524032933c8" } ]
+           "9378575b5575f49a185d50130743a190a9be2f82" } ]
 }

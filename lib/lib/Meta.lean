@@ -47,7 +47,7 @@ def mkFieldTypeAux
   (f : List Expr → Expr → m α) →
   m α
 | Expr.forallE n d b data, f  => do
-  let d ← instantiateBVar vs d
+  let d := instantiateBVar vs d
   Lean.Meta.withLocalDecl n data.binderInfo d λ v => do
     -- let v' := instantiateBVar vs v
     if d.isConstOf s'
@@ -56,7 +56,7 @@ def mkFieldTypeAux
     else mkFieldTypeAux (v :: vs) s' b f
 | e, f => do
   f vs
-    (← instantiateBVar vs e)
+    (instantiateBVar vs e)
 
 @[inline]
 def mkFieldType :
@@ -72,9 +72,9 @@ def withFieldTypeAux (s field : Name)
     (f : List Expr → Expr → m α) :
   OptionT m α := do
 let env ← getEnv
-let s' ← OptionT.mk <| findField? env s field
-let info ← OptionT.mk <| getFieldInfo? env s' field
-let d ← OptionT.mk <| env.find? info.projFn
+let s' ← liftOption <| findField? env s field
+let info ← liftOption <| getFieldInfo? env s' field
+let d ← liftOption <| env.find? info.projFn
 let t := d.type
 liftM <| mkFieldType s' t f
 
@@ -101,8 +101,8 @@ end Monad
 
 def getFieldInfo' (s field : Name) : OptionT MetaM StructureFieldInfo := do
 let env ← getEnv
-let s' ← OptionT.mk <| findField? env s field
-OptionT.mk <| getFieldInfo? env s' field
+let s' ← liftOption <| findField? env s field
+liftOption <| getFieldInfo? env s' field
 
 def getFieldInfo! (s field : Name) : MetaM StructureFieldInfo := do
 let some a ← getFieldInfo' s field |>.run
@@ -118,7 +118,7 @@ addAndCompile
     (ConstantVal.mk n us t) d
     (ReducibilityHints.regular 10)
     DefinitionSafety.safe
-n
+return n
 
 def addConst (us : List Name) (n : Name) (t : Expr) (d : Expr) : MetaM Name := do
 let t ← instantiateMVars t
@@ -127,7 +127,7 @@ addAndCompile
   <| Declaration.opaqueDecl
   <| OpaqueVal.mk
     (ConstantVal.mk n us t) d false
-n
+return n
 
 def addThm (us : List Name) (n : Name) (t : Expr) (d : Expr) : MetaM Name := do
 let t ← instantiateMVars t
@@ -136,7 +136,7 @@ addDecl
   <| Declaration.thmDecl
   <| TheoremVal.mk
     (ConstantVal.mk n us t) d
-n
+return n
 
 def Simp.Result.proof (r : Simp.Result) : MetaM Expr :=
 match r.proof? with

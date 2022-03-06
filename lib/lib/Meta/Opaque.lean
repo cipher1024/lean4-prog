@@ -79,8 +79,8 @@ def constantWrapper (name name' : Name) : MetaM Unit := do
 def replaceName (n n' : Name) (s : Syntax) := Id.run <|
 s.replaceM λ s =>
   if s.isIdent && s.getId == n then
-    mkIdentFrom s n'
-  else none
+    return mkIdentFrom s n'
+  else return none
 
 @[commandElab opaqueDef]
 def elabOpaqueDef : CommandElab := λ stx => do

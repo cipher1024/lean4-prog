@@ -78,16 +78,14 @@ focus
   rw [bind_pure, bind_pure] <;> assumption
   done
 next n ih =>
-  simp only [*, foldlM.loop]
+  unfold foldlM.loop
+  simp only [*]
   split
   focus
     rw [← bind_assoc, ← bind_assoc]
     auto
   focus
     simp [*]
-  simp only [*, foldlM.loop, bind_pure]
-  rw [bind_pure, bind_pure] <;> assumption
-  done
 
 theorem foldlM_hom (ar : Array α) {x₀ y₀} (h : m β → m' γ)
         (H' : h x₀ = y₀)
@@ -153,11 +151,12 @@ next =>
   simp [*, Nat.le_refl]
 next ih =>
   have h₀ : i < size ar := sorry
-  simp [foldlM.loop, h₀, Array.push_toSubarray]
+  unfold foldlM.loop
+  simp [h₀, Array.push_toSubarray]
   rw [ih _ h₀]
   apply Nat.succ_inj
   rw [Nat.sub_succ, Nat.succ_pred]
-  <;> auto [Nat.zero_lt_sub_of_lt]
+  <;> auto [Nat.zero_lt_sub_of_lt, Nat.sub_ne_zero_of_lt]
 
 section foldl_sim
 
@@ -187,9 +186,10 @@ induction n generalizing x₀ i j;
 focus
   have := Nat.zero_le (size ar)
   simp [foldl, foldlM, *, foldlM.loop, Nat.zero_sub]
-  byCases h : i < j <;> simp [*] <;> refl
+  by_cases h : i < j <;> simp [*] <;> refl
 next n ih =>
-  simp [*, foldlM.loop]
+  unfold foldlM.loop
+  simp [*]
   split
   . rw [← H, ← ih] <;> assumption
   . refl
@@ -337,7 +337,7 @@ def empty (ar : Subarray α) : Bool := ar.start == ar.stop
 theorem stop_popFront (ar : Subarray α) :
   ar.popFront.stop = ar.stop := by
 simp [popFront]
-byCases h : ar.start < ar.stop <;> simp [*]
+by_cases h : ar.start < ar.stop <;> simp [*]
 
 @[simp]
 theorem size_popFront (ar : Subarray α) :
@@ -377,7 +377,7 @@ theorem extract_eq_self (ar : Subarray α) :
 cases ar; simp [extract, size, Nat.add_sub_assoc]
 constructor
 . auto
-. apply Nat.le_max_l; simp [Nat.add_sub_cancel, *]; refl
+. apply Nat.le_max_l; simp [Nat.add_sub_of_le, *]
 
 theorem get_extract (ar : Subarray α) i p q h h' :
   (ar.extract p q).get i h = ar.get (p + i) h' := by
@@ -435,9 +435,6 @@ have : min (ar.start + q) ar.stop = ar.start + q :=
   by simp [Nat.add_le_iff_l, ar.h₁]; assumption
 have : max q p = q := by simp [*]
 simp [extract, size, *]
-apply congrFun; apply congrArg
-rw [Nat.add_comm, ← Nat.add_sub_assoc, Nat.sub_self, Nat.add_zero]
-refl
 
 attribute [simp] measure invImage InvImage Nat.lt_wfRel
 
@@ -467,7 +464,7 @@ if h : i < ar.size then
   if p $ ar.get i h then takeWhileAux p (Nat.succ i) ar
   else ar.extract 0 i
 else ar.extract 0 i
-termination_by' measure λ ⟨_, _, i, ar⟩ => ar.size - i
+termination_by takeWhileAux i ar  => ar.size - i
 decreasing_by prove_decr
 
 theorem takeWhileAux_eq (p : α → Bool) (ar : Subarray α) :
@@ -487,7 +484,7 @@ if h : i < ar.size then
   if p $ ar.get i h then spanAux p (Nat.succ i) ar
   else (ar.extract 0 i, ar.extract i ar.size)
 else (ar.extract 0 i, ar.extract i ar.size)
-termination_by' measure λ ⟨_, _, i, ar⟩ => ar.size - i
+termination_by spanAux i ar  => ar.size - i
 decreasing_by prove_decr
 
 theorem spanAux_eq (p : α → Bool) (i : Nat) (ar : Subarray α) :
@@ -507,7 +504,7 @@ if h : 0 < ar.size then
   if p $ ar.get 0 h then dropWhile p ar.popFront
   else ar
 else ar
-termination_by' measure λ ⟨_, _, ar⟩ => ar.size
+termination_by dropWhile ar => ar.size
 decreasing_by prove_decr
 
 theorem dropWhile_eq (p : α → Bool) (ar : Subarray α) :
@@ -533,7 +530,7 @@ generalize hk : (ar.size - i) = k
 induction k using Nat.strong_ind generalizing i;
 next ih =>
   rw [spanAux_eq, dropWhile_eq, takeWhileAux_eq]
-  byCases h₀ : i < size ar <;> simp [*]
+  by_cases h₀ : i < size ar <;> simp [*]
   focus
     subst hk
     have : i + 0 < ar.size := by simp [*]

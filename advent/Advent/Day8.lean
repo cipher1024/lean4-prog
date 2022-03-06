@@ -213,7 +213,7 @@ SearchM.run do
       k := { k with
         processed := k.processed.push str,
         decoded := k.decoded.insert str s' }
-    k
+    return k
   else
     failure
 
@@ -282,7 +282,7 @@ OptionM.run do
   -- dbgTrace s!"{dump! fullSubst}" λ _ =>
   let x' ← OptionM.run <| x.mapM k.decoded.find?
   let y' ← OptionM.run <| y.mapM k.decoded.find?
-  (#[],y')
+  return (#[],y')
   -- #eval counts.toList
   -- #eval decode "abcdefg"
 
@@ -321,7 +321,7 @@ def main : IO Unit := do
 let ar ← parseInput <| (← IO.FS.lines inputFileName)
 -- let ar ← parseInput <| (← lines examples₀)
 -- let ar ← parseInput <| (← lines examples₁)
-let some decoded ← OptionM.run <| ar.mapM decode₃
+let some decoded := OptionM.run <| ar.mapM decode₃
   | throw <| IO.userError "parse error"
 let output : Nat := Foldable.sum decoded
     -- Foldable.sum <| decoded.map (λ ln => ln.get! 1 |>.size)
@@ -333,7 +333,7 @@ IO.println output
 
 def main₀ : IO Unit := do
 -- let ar ← parseInput <| (← IO.FS.lines inputFileName)
-let ar ← parseInput <| (← lines examples₁)
+let ar ← parseInput <| (lines examples₁)
 let decoded := ar.map (. |>.map (. |>.mapMaybe decode))
 let output : Nat :=
     Foldable.sum <| decoded.map (λ ln => ln.get! 1 |>.size)

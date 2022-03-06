@@ -93,7 +93,7 @@ def examples :=
 "16,1,2,0,4,2,7,1,2,14"
 
 def parseInput (input : String) : IO (Array Nat) := do
-Array.mk <| (← input.splitOn "," |>.mapM parseNat)
+return Array.mk <| (← input.splitOn "," |>.mapM parseNat)
 
 def inputFileName := "Advent/Day7_input.txt"
 -- #check elab
@@ -118,7 +118,7 @@ Array.foldlIdx
 def main : IO Unit := do
 let pos ← parseInput <| (← IO.FS.lines inputFileName).get! 0
 -- let pos ← parseInput examples
-let count ← posToCount pos
+let count := posToCount pos
 -- IO.println <| pos.size
 IO.println <| dump! minCost pos
 -- IO.println <| dump! count

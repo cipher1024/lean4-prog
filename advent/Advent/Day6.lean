@@ -45,7 +45,7 @@ end Population
 namespace Day6
 
 def parseInput (input : String) : IO (Array Nat) := do
-Array.mk <| (← input.splitOn "," |>.mapM parseNat)
+return Array.mk <| (← input.splitOn "," |>.mapM parseNat)
 
 def examples :=
 "3,4,3,1,2"

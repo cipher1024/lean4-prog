@@ -78,7 +78,7 @@ section mapM
 
 variable {M} [Monad M]
 @[specialize] partial def mapMAux (f : Char → M Char) (i : Pos) (s : String) : M String :=
-  if s.atEnd i then s
+  if s.atEnd i then return s
   else do
     let c ← f (s.get i)
     let s := s.set i c

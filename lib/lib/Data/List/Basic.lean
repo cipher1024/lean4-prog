@@ -13,10 +13,6 @@ theorem foldl_app :
   foldl f x₀ (xs ++ ys) = foldl f (foldl f x₀ xs) ys := by
 induction xs generalizing x₀ <;> auto
 
-theorem append_cons (xs : List α) (y ys) :
-  xs ++ y :: ys = (xs ++ [y]) ++ ys := by
-induction xs <;> simp [*]
-
 theorem foldl_eq_self :
   (xs.foldl (flip (.::.)) []).reverse = xs := by
 simp only [flip]
@@ -66,7 +62,7 @@ theorem drop_nil n : (@nil α).drop n = [] := by
 cases n <;> refl
 
 theorem cons_drop {i} {xs : List α} (h : i < length xs) :
-  get xs i h :: drop i.succ xs = drop i xs := by
+  get xs ⟨i, h⟩ :: drop i.succ xs = drop i xs := by
 induction xs generalizing i;
 . cases h
 cases i <;> simp [get, drop, *] at h ⊢

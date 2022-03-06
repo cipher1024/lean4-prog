@@ -46,7 +46,7 @@ def rightAlign (s : String) : Cell :=
 ⟨s, Alignment.right⟩
 
 def Cell.format (c : Cell) (w : Nat) : String :=
-let padding := (w - c.toString.length).repeat (. ++ " ") ""
+let padding := Nat.repeat (. ++ " ") (w - c.toString.length) ""
 match c.align with
 | Alignment.left => s!" {c.toString}{padding}"
 | Alignment.right => s!" {padding}{c.toString}"

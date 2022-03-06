@@ -111,7 +111,7 @@ initialize registerTraceClass `refl
 initialize registerTraceClass `substAll
 
 open Expr Lean.Meta
--- #check or
+
 def applyUnifyAll (g : MVarId) (lmm : Expr) (allowMVars := false) : MetaM (List MVarId) := do
   trace[auto.lemmas]"try {lmm}"
   trace[auto.lemmas]"type: {(← inferType lmm)}"
@@ -122,7 +122,7 @@ def applyUnifyAll (g : MVarId) (lmm : Expr) (allowMVars := false) : MetaM (List 
              throw e
   trace[auto.lemmas]"{gs.length} new goals"
   guard (allowMVars ∨ (← gs.allM λ v => do
-    (← inferType (← inferType (mkMVar v))).isProp))
+    return (← inferType (← inferType (mkMVar v))).isProp))
   return gs
 
 def tacRefl : TacticM Unit := do
@@ -170,43 +170,8 @@ def tacSubstAll : TacticM Unit := do
           if eq.isAppOf `Eq ∧ (lhs.isFVar ∨ rhs.isFVar) then
             trace[substAll] "var eq"
             liftMetaTactic1 (subst .  h.fvarId)
-          -- else
-            -- pure ()
-            -- trace[substAll] "eq:  {eq.ctorName} {eq}"
-            -- trace[substAll] "lhs: {lhs.ctorName}"
-            -- trace[substAll] "rhs: {rhs.ctorName}"
-        -- else
-            -- trace[substAll] "old"
       | _ =>
         trace[substAll] "ignore {h.userName} :  {t.ctorName} {t}"
-
--- #check apply
-  -- let g := (← instantiateMVars (← getMainTarget)).consumeMData
-  -- match g with
-  -- | (app (app R x _) y _) => liftMetaTactic λ g => do
-  --   let cl ← mkAppOptM ``Reflexive #[none, R]
-  --   let inst ← synthInstance cl
-  --   let reflLmm ← mkAppOptM ``Reflexive.refl #[none, R, inst]
-  --   apply g reflLmm
-  -- | _ =>
-  --   trace[refl]"ctorName: {g.ctorName}"
-  --   throwError "Expection a reflexive relation: R x y"
-
--- inductive ChoiceTree (σ : Type u) (m : Type u → Type v) : Type u → Type (max (u+1) v)
--- | empty : ChoiceTree σ m α
--- | choice {β : Type u} (s : σ) (l : List β) (f : β → m α) : ChoiceTree σ m α
--- | chain' {β : Type u} : ChoiceTree σ m β → (β → m α) → ChoiceTree σ m α
--- | push' : ChoiceTree σ m α → ChoiceTree σ m α → ChoiceTree σ m α
-
--- def ChoiceTree.chain [Bind m] : ChoiceTree σ m β → (β → m α) → ChoiceTree σ m α
--- | ChoiceTree.empty, _ => ChoiceTree.empty
--- | ChoiceTree.chain' x f, g => ChoiceTree.chain' x λ a => f a >>= g
--- | x, f => ChoiceTree.chain' x f
-
--- def ChoiceTree.push : ChoiceTree σ m α → ChoiceTree σ m α → ChoiceTree σ m α
--- | ChoiceTree.empty, x => x
--- | x, ChoiceTree.empty => x
--- | x, y => ChoiceTree.push' x y
 
 def SearchT (δ : Type u) (m : Type u → Type v) (α : Type u) := (α → m δ) → m δ
 
@@ -317,7 +282,7 @@ def iterate [Monad m] [MonadLift TacticM m]: Nat → m PUnit → m PUnit
 | Nat.succ n, tac => do
   unless (← isDone) do
     -- tryTac (do
-      ( traceM `auto.iterate s!"iterate n = {n}" : TacticM Unit)
+      ( traceM `auto.iterate <| return s!"iterate n = {n}" : TacticM Unit)
       tac
       allGoals $ iterate n tac
 
@@ -383,8 +348,8 @@ def mkAutoAttr (attrName : Name) (attrDescr : String) (ext : AutoExtension) : IO
         ext.add declName attrKind
       discard <| go.run {} {}
     erase := fun declName => do
-      let s ← ext.getState (← getEnv)
-      let s ← s.erase declName
+      let s := ext.getState (← getEnv)
+      let s := s.erase declName
       modifyEnv fun env => ext.modifyState env fun _ => s
   }
 
@@ -400,30 +365,6 @@ def registerAutoAttr (attrName : Name) (attrDescr : String) (extName : Name := a
   mkAutoAttr attrName attrDescr ext
   return ext
 
-def registerAutoAttribute {α : Type} [Inhabited α] (impl : ParametricAttributeImpl α) : IO (ParametricAttribute α) := do
-  let ext : PersistentEnvExtension (Name × α) (Name × α) (NameMap α) ← registerPersistentEnvExtension {
-    name            := impl.name
-    mkInitial       := pure {}
-    addImportedFn   := fun s => impl.afterImport s *> pure {}
-    addEntryFn      := fun (s : NameMap α) (p : Name × α) => s.insert p.1 p.2
-    exportEntriesFn := fun m =>
-      let r : Array (Name × α) := m.fold (fun a n p => a.push (n, p)) #[]
-      r.qsort (fun a b => Name.quickLt a.1 b.1)
-    statsFn         := fun s => "parametric attribute" ++ Format.line ++ "number of local entries: " ++ format s.size
-  }
-  let attrImpl : AttributeImpl := {
-    name  := impl.name
-    descr := impl.descr
-    add   := fun decl stx kind => do
-      unless kind == AttributeKind.global do throwError "invalid attribute '{impl.name}', must be global"
-      let env ← getEnv
-      let val ← impl.getParam decl stx
-      let env' := ext.addEntry env (decl, val)
-      setEnv env'
-      try impl.afterSet decl val catch _ => setEnv env
-  }
-  registerBuiltinAttribute attrImpl
-  pure { attr := attrImpl, ext := ext }
 
 
 initialize autoExtension : AutoExtension ← registerAutoAttr `auto "auto closing lemma"
@@ -445,10 +386,9 @@ open Lean Meta
 --     else
 --       lemmas
 
-
 def getAutoLemmas [Monad m] [MonadEnv m] : m NameSet := do
-  let d := (← autoExtension.getState (← getEnv))
-  return d
+  let ns := autoExtension.getState (← getEnv)
+  return ns
     |>.insert ``True.intro
     |>.insert ``Iff.intro
     |>.insert ``And.intro
@@ -470,7 +410,7 @@ open Lean
 def Meta.applyAuto (ns : Array Name) (allowMVars := false) : SearchTacticM δ Unit :=
 SearchTacticM.focus do
   let n ← SearchT.pick' ns
-  traceM `auto.lemmas s!"Lemma: {n}"
+  traceM `auto.lemmas <| return s!"Lemma: {n}"
   let mut lmm ← (mkConstWithFreshMVarLevels n : TacticM _)
   Lean.Elab.Term.synthesizeSyntheticMVars true
   lmm ← instantiateMVars lmm
@@ -480,7 +420,7 @@ def Meta.applyAssumption (allowMVars := false) : SearchTacticM δ Unit := Search
   let x ← SearchT.pick' (← getLCtx).getFVarIds
   let lctx ← getLCtx
   guard (¬ (lctx.get! x).isAuxDecl)
-  traceM `auto.lemmas s!"Hyp: {lctx.get! x |>.userName}"
+  traceM `auto.lemmas <| return s!"Hyp: {lctx.get! x |>.userName}"
   liftMetaTactic (applyUnifyAll . (mkFVar x) allowMVars)
 
 elab "#print" "auto_db" : command => do
@@ -547,7 +487,7 @@ elab "auto" : tactic => do
   withMainContext (Meta.tacAuto (← getAutoList) none).run
 
 elab "auto" " with " n:num : tactic => do
-  withMainContext (Meta.tacAuto (← getAutoList) (← Syntax.isNatLit? n)).run
+  withMainContext (Meta.tacAuto (← getAutoList) (Syntax.isNatLit? n)).run
 
 elab "auto" "[" ids:ident,* "]": tactic => do
   let ids ← getAutoList (← ids.getElems.mapM resolveGlobalConstNoOverload)
@@ -555,7 +495,7 @@ elab "auto" "[" ids:ident,* "]": tactic => do
 
 elab "auto" "[" ids:ident,* "]" " with " n:num : tactic => do
   let ids ← getAutoList (← ids.getElems.mapM resolveGlobalConstNoOverload)
-  withMainContext (Meta.tacAuto ids (← Syntax.isNatLit? n)).run
+  withMainContext (Meta.tacAuto ids (Syntax.isNatLit? n)).run
 
 elab "eauto" : tactic => do
   withMainContext (Meta.tacAuto (← getAutoList) none true).run
