@@ -1,6 +1,7 @@
 
 import Lib.Logic.Basic
 import Lib.Data.Nat
+import Lib.Data.Ordering
 import Lib.Meta.DeclGraph
 import Lib.Tactic
 
@@ -173,28 +174,6 @@ next h =>
 
 end TotalOrder
 
-namespace Ordering
-
-def flip : Ordering → Ordering
-| lt => gt
-| eq => eq
-| gt => lt
-
-instance : DecidableEq Ordering
-  | x, y => by
-cases x <;> cases y <;>
-first
- | apply isTrue; refl
- | apply isFalse;
-   intro h; cases h
-
-inductive Spec {α} [LT α] (x y : α) : Ordering → Prop
-| isLT : x < y → Spec x y lt
-| isEQ : x = y → Spec x y eq
-| isGT : y < x → Spec x y gt
-
-end Ordering
-
 class DecidableTotalOrder extends TotalOrder α, Ord α where
   compare_eq_lt_iff {x y : α} :
     compare x y = Ordering.lt ↔ x < y
@@ -261,16 +240,37 @@ instance : BEq α where
 
 open Ordering Ordering.Spec
 
-theorem compareSpec (x y : α) : Ordering.Spec x y (compare x y) :=
+def compareSpec (x y : α) : Ordering.Spec x y (compare x y) :=
 match h: compare x y with
 | lt => isLT (by simp at h; assumption)
 | eq => isEQ (by simp at h; assumption)
 | gt => isGT (by simp at h; assumption)
 
-theorem compareSpec' {x y : α} {cmp}
+def compareSpec' {x y : α} {cmp}
   (h : compare x y = cmp):
-  Ordering.Spec x y cmp := by
-rw [← h]; apply compareSpec
+  Ordering.Spec x y cmp :=
+h ▸ compareSpec x y
+
+def pcompare (x y : α) : POrdering x y :=
+have ⟨ord, h⟩ : { ord // compare x y = ord } := ⟨_, rfl⟩
+match compareSpec' h with
+| isLT h => POrdering.isLT h
+| isEQ h => POrdering.isEQ h
+| isGT h => POrdering.isGT h
+
+theorem toOrdering_pcompare (x y : α) :
+  (pcompare x y).toOrdering = compare x y := by
+unfold pcompare
+generalize h : { val := compare x y, property := rfl : Subtype _ } = z
+cases z with | mk z hz =>
+simp; clear h
+cases compareSpec' hz
+<;> simp [hz, POrdering.toOrdering]
+
+macro "compare " x:term ", " y:term : tactic =>
+  `(tactic|
+    rw [← toOrdering_pcompare x y];
+    cases pcompare x y <;> simp only [toOrdering] )
 
 theorem and_comm {p q : Prop} :
   p ∧ q ↔ q ∧ p := by auto
