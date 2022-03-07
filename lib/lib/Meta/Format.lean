@@ -22,6 +22,12 @@ instance [MonadLiftT m n] [ToFormatM m α] : ToFormatM n α where
   formatM x := liftM (formatM x : m _)
   modifier := ToFormatM.modifier m α
 
+instance [MonadLiftT n m] [Monad m] [ToFormatM m α] : ToFormatM m (n α) where
+  formatM x := do
+    let x : α ← (x : m α)
+    liftM (formatM x : m _)
+  modifier := ToFormatM.modifier m α
+
 instance (priority := low)
          [Pure m] [ToFormat α] : ToFormatM m α where
   formatM x := pure <| format x
@@ -38,8 +44,14 @@ instance : ToFormatM MetaM Expr where
 instance : ToFormatM MetaM FVarId where
   formatM v := Meta.ppExpr <| mkFVar v
 
+def AsConst := Name
+@[inline] def asConst : Name → AsConst := id
+
 def WithType := Expr
 @[inline] def withType : Expr → WithType := id
+
+def TypeOf := Expr
+@[inline] def typeOf : Expr → TypeOf := id
 
 def AsGoal := MVarId
 @[inline] def asGoal : MVarId → AsGoal := id
@@ -50,12 +62,26 @@ def MainGoal := Unit
 def GoalList := Unit
 @[inline] def goalList : GoalList := ()
 
+instance : ToFormatM MetaM AsConst where
+  formatM x := do
+    let c ← mkConstWithLevelParams x
+    let t ← Meta.ppExpr (← Meta.inferType c)
+    let x ← Meta.ppExpr c
+    return x ++ " : " ++ t
+  modifier := [`asConst]
+
 instance : ToFormatM MetaM WithType where
   formatM x := do
     let t ← Meta.ppExpr (← Meta.inferType x)
     let x ← Meta.ppExpr x
     return x ++ " : " ++ t
   modifier := [`withType]
+
+instance : ToFormatM MetaM TypeOf where
+  formatM x := do
+    let t ← Meta.ppExpr (← Meta.inferType x)
+    return t
+  modifier := [`typeOf]
 
 instance : ToFormatM MetaM AsGoal where
   formatM x := Format.indentD <$> Meta.ppGoal x
