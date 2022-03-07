@@ -85,6 +85,22 @@ theorem foldl_reverse (xs : List α) (f : β → α → β) :
   xs.reverse.foldl f x₀ = xs.foldr (flip f) x₀ := by
 induction xs <;> simp [foldl, foldr, *]; refl
 
+theorem drop_append' {xs ys : List α}
+        (h : xs.length = n) :
+  (xs ++ ys).drop n = ys := by
+induction xs generalizing n with
+| nil =>
+  cases n <;> simp
+  cases h
+| cons x xs ih =>
+  cases n <;> simp only [drop, List.cons_append]
+  <;> cases h
+  auto
+
+theorem drop_append {xs ys : List α} :
+  (xs ++ ys).drop xs.length = ys :=
+drop_append' rfl
+
 end List
 
 namespace List

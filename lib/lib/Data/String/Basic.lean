@@ -129,4 +129,26 @@ instance : LawfulMonoTraversable String Char where
     simp [MonoTraversable.traverse, mapA]
     auto [LawfulTraversable.traverse_sim, ApplicativeRel.naturality]
 
-end String
+theorem toList_inj {s₀ s₁ : String} :
+  s₀.toList = s₁.toList → s₀ = s₁ :=
+by intro h; cases s₀; cases s₁; cases h; rfl
+
+@[auto]
+theorem one_le_csize (c : Char) : 1 ≤ csize c := by
+ cases c
+ simp [csize, Char.utf8Size]
+ split*
+ <;> simp [UInt32.ofNatCore, UInt32.toNat]
+
+@[simp]
+theorem toList_mk {x : List Char} :
+  String.toList ⟨x⟩ = x := rfl
+
+@[simp]
+theorem toList_append {s₀ s₁ : String} :
+  (s₀ ++ s₁).toList = s₀.toList ++ s₁.toList :=
+rfl
+
+@[simp]
+theorem length_toList {s : String} :
+  s.toList.length = s.length := rfl

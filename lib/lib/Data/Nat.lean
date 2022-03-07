@@ -36,30 +36,17 @@ theorem add_lt_of_lt_sub_l {m n k : Nat} :
   m < n - k → k + m < n := by
 rw [Nat.add_comm]; apply add_lt_of_lt_sub_r
 
--- theorem add_le_of_le_sub_r {m n k : Nat} :
---   m ≤ n - k → m + k ≤ n := by
--- induction k generalizing m n with
--- | zero =>
---   simp; apply id
--- | succ k ih =>
---   cases n
---   simp [Nat.add_succ_eq_succ_add]
---   intro h; apply ih
---   have h' : n - succ k ≤ n - k := sorry
+@[auto]
+theorem le_add_of_le_l {m n k : Nat}
+        (h : m ≤ n) :
+  m ≤ n + k :=
+by trans n <;> auto
 
---   -- apply Nat.succ_le_
---   -- have h := Nat.succ_le_succ h
---   -- cases n <;> simp [Nat.add_succ_eq_succ_add, Nat.succ_sub_succ]
---   -- . intros h; apply ih
---   -- . apply ih
---   -- { intros h; cases h }
---   -- simp [succ_sub_succ, add_succ]
---   -- intros h; apply succ_lt_succ
---   -- apply ih; assumption
-
--- theorem add_le_of_le_sub_l {m n k : Nat} :
---   m ≤ n - k → k + m ≤ n := by
--- rw [Nat.add_comm]; apply add_le_of_le_sub_r
+@[auto]
+theorem le_add_of_le_r {m n k : Nat}
+        (h : m ≤ k) :
+  m ≤ n + k :=
+by trans k <;> auto
 
 @[simp]
 theorem succ_lt_succ_iff {n m : Nat} : succ n < succ m ↔ n < m :=
@@ -99,8 +86,6 @@ split <;> split <;> try assumption
 next h₀ _ =>
   have h₀ : y < x := Nat.gt_of_not_le h₀
   apply Nat.lt_trans <;> assumption
-
-
 
 theorem max_lt_max {x x' y y' : Nat}
   (Hx : x < x')
