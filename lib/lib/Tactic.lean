@@ -31,18 +31,23 @@ instance : Reflexive (.→.) where
 instance : @Reflexive Nat LE.le where
   refl := Nat.le_refl
 
-macro "rintro1" t:term : tactic =>
+macro "rintro1 " t:term : tactic =>
   `(tactic| intro x; match x with | $t:term => ?_)
 
-syntax "rintro" term,* : tactic
+syntax "rintro " term,* : tactic
 
 macro_rules
 | `(tactic| rintro ) => `(tactic| skip)
 | `(tactic| rintro $t, $ts) =>
-  `(tactic| rintro1 $t; rintro $ts )
+  `(tactic| rintro1 $t <;> rintro $ts )
 
 macro "obtain " p:term " from " d:term : tactic =>
   `(tactic| match $d:term with | $p:term => ?_)
+
+macro "obtain " p:term " : " q:term " from " d:term : tactic =>
+  `(tactic|
+    have h : $q := $d;
+    match h with | $p:term => ?_)
 
 namespace Lean.Elab.Tactic
 open Lean.Meta
@@ -578,11 +583,25 @@ elab "all_but_first " tac:tacticSeq : tactic => do
     | throwNoGoalsToBeSolved
   let mut gs := #[mvarId]
   for g in mvarIds do
-    setGoals [g]
-    evalTactic tac
-    let g' ← getGoals
-    gs := gs.appendList g'
+    if ← not <$> isExprMVarAssigned g then
+      setGoals [g]
+      tryTac <| withMainContext <| evalTactic tac
+      gs := gs.appendList (← getGoals)
   setGoals gs.toList
 
 macro:1 x:tactic " </> " y:tactic:0 : tactic =>
   `(tactic| focus ($x:tactic; all_but_first ($y:tactic; done)))
+
+syntax "split" "*" : tactic
+macro_rules
+  | `(tactic| split*) => `(tactic| first | split <;> split* | skip)
+
+macro "have " " ← " " : " p:term " := " proof:term : tactic =>
+  `(tactic|
+    have h : $p := $proof ;
+    rw [← h] <;> clear h )
+
+macro "have " " → " " : " p:term " := " proof:term : tactic =>
+  `(tactic|
+    have h : $p := $proof ;
+    rw [h] <;> clear h )
