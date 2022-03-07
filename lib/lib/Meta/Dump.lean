@@ -31,21 +31,25 @@ section printVars
 variable [MonadLiftT IO m] [Monad m]
 
 @[inline]
-def printVarsAux (acc : Format) :
-  List (String × m Format) → m Unit
-| [] => IO.println acc
+def formatVarsAux (acc : Format) :
+  List (String × m Format) → m Format
+| [] => pure acc
 | (x, y) :: [] => do
   let y ← y
   let acc := acc ++ x ++ y
-  IO.println acc
+  return acc
 | (x, y) :: xs => do
   let y ← y
-  printVarsAux (acc ++ x ++ y ++ format "\n") xs
+  formatVarsAux (acc ++ x ++ y ++ format "\n") xs
 
 @[inline]
-def printVars [MonadLiftT IO m] [Monad m] :
-  List (String × m Format) → m Unit :=
-printVarsAux ""
+def formatVars [MonadLiftT IO m] [Monad m] :
+  List (String × m Format) → m Format :=
+formatVarsAux ""
+
+def printVars [MonadLiftT IO m] [Monad m]
+  (vars : List (String × m Format)) : m Unit := do
+IO.println (← formatVars vars)
 
 end printVars
 
@@ -68,14 +72,19 @@ def dumpList (ls : List Syntax) : TermElabM Expr := do
     (← dumpListAux lines)
     (some (mkConst ``String))
 
-def dumpListMonadic (ls : List Syntax) : TermElabM Expr := do
+def formatListMonadic (ls : List Syntax) : TermElabM Syntax := do
   let out ← ls.mapM (λ x => do
     return toString (← Lean.PrettyPrinter.ppTerm x))
   let len := out.map String.length |>.maximum? |>.get!
   let out := out.map <| (padding len . ++ " = ")
   let lines ← out.zipWithM ls λ x y =>
     `(($(Syntax.mkStrLit x), Std.ToFormatM.formatM $y))
-  let lines ← mkListLit lines
+  mkListLit lines
+
+open Lean.Elab.Term (elabTerm)
+
+def dumpListMonadic (ls : List Syntax) : TermElabM Expr := do
+  let lines ← formatListMonadic ls
   Lean.Elab.Term.elabTerm
     (← ``(printVars $lines))
     none
@@ -83,10 +92,23 @@ def dumpListMonadic (ls : List Syntax) : TermElabM Expr := do
 elab "dump_list!" "[" t:(term,*) "]" : term =>
   dumpList t.getSepArgs.toList
 
+elab "dump_vars!" "[" t:(term,*) "]" : term => do
+  let msg ← formatListMonadic t.getSepArgs.toList
+  elabTerm (← `(formatVars $msg)) none
+
 elab "print_vars!" "[" t:(term,*) "]" : term => do
   dumpListMonadic t.getSepArgs.toList
 
 elab "dump!" t:term : term =>
   dumpList [t]
+
+elab "trace_vars![" id:ident "]" "[" t:(term,*)  "]" : term => do
+  let msg ← formatListMonadic t.getSepArgs.toList
+  elabTerm (← `(do
+    let cls := $(quote id.getId.eraseMacroScopes)
+    if (← Lean.isTracingEnabledFor cls) then
+
+      Lean.addTrace cls <| "\n" ++ (← formatVars $msg)))
+    none
 
 end Lean.Elab.Tactic
