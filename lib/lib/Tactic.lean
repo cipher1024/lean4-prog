@@ -605,3 +605,15 @@ macro "have " " → " " : " p:term " := " proof:term : tactic =>
   `(tactic|
     have h : $p := $proof ;
     rw [h] <;> clear h )
+
+namespace Classical
+
+theorem contradiction {p q} (hp : p) (hnp : ¬ p) : q :=
+by cases hnp hp
+
+end Classical
+
+macro "falseHyp" h:ident : tactic =>
+  `(first
+    | refine' Classical.contradiction _ $h; clear $h
+    | apply Classical.contradiction $h; clear $h )
