@@ -118,11 +118,18 @@ def applyUnifyAll (g : MVarId) (lmm : Expr) (allowMVars := false) : MetaM (List 
   trace[auto.goal]"goal {(← inferType (mkMVar g))}"
   let gs ← try apply g lmm
            catch e =>
+             trace[auto.apply.failure]"error: {lmm}"
              trace[auto.apply.failure]"error: {e.toMessageData}"
              throw e
   trace[auto.lemmas]"{gs.length} new goals"
-  guard (allowMVars ∨ (← gs.allM λ v => do
-    return (← inferType (← inferType (mkMVar v))).isProp))
+  let ls ← gs.mapM λ v => inferType (mkMVar v)
+  trace[auto.lemmas]"{ls} all new goals"
+  let b ← gs.allM λ v => do
+    return (← inferType (← inferType (mkMVar v))).isProp
+  if ¬ (allowMVars ∨ b) then
+    trace[auto.lemmas]"failed"
+    failure
+  trace[auto.lemmas]"success"
   return gs
 
 def tacRefl : TacticM Unit := do
@@ -345,7 +352,12 @@ def mkAutoAttr (attrName : Name) (attrDescr : String) (ext : AutoExtension) : IO
     add   := fun declName stx attrKind =>
       let go : MetaM Unit := do
         let info ← getConstInfo declName
-        ext.add declName attrKind
+        match info with
+        | ConstantInfo.inductInfo i =>
+          for c in i.ctors do
+            ext.add c attrKind
+        | _ =>
+          ext.add declName attrKind
       discard <| go.run {} {}
     erase := fun declName => do
       let s := ext.getState (← getEnv)
@@ -364,8 +376,6 @@ def registerAutoAttr (attrName : Name) (attrDescr : String) (extName : Name := a
   let ext ← mkAutoExt extName
   mkAutoAttr attrName attrDescr ext
   return ext
-
-
 
 initialize autoExtension : AutoExtension ← registerAutoAttr `auto "auto closing lemma"
 
@@ -464,11 +474,11 @@ def withMainContext' (x : SearchTacticM δ α) : SearchTacticM δ α :=
 def Meta.tacAutoStep (ns : Array Name) (allowMVars := false) : SearchTacticM δ Unit :=
 withMainContext' $
   Lean.Elab.Tactic.tacRefl <|>
-  liftMetaMAtMain Meta.contradiction <|>
+  liftMetaTactic (do Meta.contradiction .; return []) <|>
   Meta.applyAssumption allowMVars <|>
   Meta.destructHyp <|>
   liftMetaTactic1 ((some ∘ Prod.snd) <$> intro1 .) <|>
-  Meta.applyAuto ns
+  Meta.applyAuto (allowMVars := allowMVars) ns
   -- Meta.applyAuto ns allowMVars <|>
   -- liftMetaTactic1 ((some ∘ Prod.snd) <$> intro1 .)
 
@@ -501,6 +511,8 @@ elab "eauto" : tactic => do
   withMainContext (Meta.tacAuto (← getAutoList) none true).run
 elab "auto_step" : tactic => do
   withMainContext (Meta.tacAutoStep (← getAutoList)).run
+elab "eauto_step" : tactic => do
+  withMainContext (Meta.tacAutoStep (allowMVars := true) (← getAutoList)).run
 elab "apply_auto" : tactic => do
   withMainContext (Meta.applyAuto (← getAutoList)).run
 
@@ -508,12 +520,20 @@ elab "eauto" "[" ids:ident,* "]" : tactic => do
   let ids ← getAutoList (← ids.getElems.mapM resolveGlobalConstNoOverload)
   withMainContext (Meta.tacAuto ids none true).run
 
+elab "eauto" "[" ids:ident,* "]" " with " n:num : tactic => do
+  let ids ← getAutoList (← ids.getElems.mapM resolveGlobalConstNoOverload)
+  withMainContext (Meta.tacAuto ids (Syntax.isNatLit? n) true).run
+
 syntax "change" term "at" ident : tactic
 
 elab "change" t:term "at" h:ident : tactic =>
   withMainContext do
     let h ← getFVarId h
     liftMetaTactic1 (changeLocalDecl . h (← elabTerm t none))
+
+elab "apply_assumption" : tactic =>
+  withMainContext (Meta.applyAssumption true).run
+
 
 -- macro "auto" : tactic =>
 --   `(tactic|
