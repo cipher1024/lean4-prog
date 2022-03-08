@@ -44,4 +44,17 @@ def mapFilter :
 
 end mapFilter
 
+section DecidableEq
+
+variable [DecidableEq α]
+
+def eraseAll (x : α) : AssocList α β → AssocList α β
+| nil => nil
+| cons k v xs =>
+  let xs' := eraseAll x xs
+  if x = k then xs'
+  else cons k v xs'
+
+end DecidableEq
+
 end Std.AssocList
