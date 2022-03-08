@@ -1,6 +1,8 @@
 import Lean.Elab.Tactic
 -- import Lean.Elab.Tactic.Simp
 
+#exit
+
 #check Lean.Meta.getSimpLemmas
 #check Lean.Elab.Tactic.mkSimpContext
 #check Lean.Elab.Tactic.evalSimp

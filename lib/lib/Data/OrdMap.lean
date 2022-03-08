@@ -183,7 +183,7 @@ theorem Sorted_zipWith (f : k → These α β → Option γ) :
   next h =>
     simp at h
     first
-    | have h'' := PartialOrder.le_of_lt h
+    | have h'' := Preorder.le_of_lt h
     | have h'' := Preorder.le_of_eq h
     | have h'' := True.intro
     split <;>
