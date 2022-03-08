@@ -143,4 +143,7 @@ match r.proof? with
 | none => mkAppOptM ``rfl #[r.expr]
 | some p => pure p
 
+def applyc (g : MVarId) (n : Name) : MetaM (List MVarId) := do
+apply g (← mkConstWithFreshMVarLevels n)
+
 end Lean.Meta
