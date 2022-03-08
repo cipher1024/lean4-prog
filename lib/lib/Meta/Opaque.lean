@@ -3,6 +3,25 @@ import Lean.Elab.Declaration
 
 import Lib.Meta
 
+namespace Lean.Name
+
+def revConcat : List String → Name :=
+List.foldl mkStr anonymous
+
+@[specialize]
+def withoutPrivatePrefixAux (ns : List String) (f : Name → Name) : Name → Name
+| anonymous => f <| revConcat ns
+| str p s .. => withoutPrivatePrefixAux (s :: ns) f p
+| n@(num p s ..) => n ++ f (revConcat ns)
+
+@[specialize]
+def withoutPrivatePrefix (f : Name → Name) : Name → Name :=
+withoutPrivatePrefixAux [] f
+
+def replacePrefix' (n p newP : Name) : Name :=
+withoutPrivatePrefix (replacePrefix . p newP) n
+
+end Lean.Name
 
 structure Locked {α : Sort u} (x : α) where
   val : α
@@ -25,6 +44,7 @@ trace[opaque.decls]"constant {n} : {t}"
 addConst us n t d
 
 end Meta
+
 namespace Parser
 namespace Command
 
@@ -51,7 +71,7 @@ forallTelescope t₀ λ vs t => do
   let [] ← apply v (← mkConstWithFreshMVarLevels eqnN)
     | throwError "too many goals"
   let proof ← mkLambdaFVars vs (mkMVar proof)
-  let newEqnName := eqnN.replacePrefix name' name
+  let newEqnName := eqnN.replacePrefix' name' name
   addThm' ls newEqnName t₀ proof
 
 def rewriteEqn (eqn name name' eqThm : Name) : MetaM Name := do
