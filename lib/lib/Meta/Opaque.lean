@@ -335,6 +335,7 @@ discard <| Tactic.run g.mvarId! do
       liftMetaTactic1 (do Meta.assumption .; pure none) <|>
       liftMetaTactic (Meta.applyc . ``Transport.refl) <|>
       liftMetaTactic (Meta.applyc . ``Transport.EqvTypes_arrow) <|>
+      liftMetaTactic (Meta.applyc . ``Transport.EqvTypes_forall') <|>
       liftMetaTactic (Meta.applyc . ``Transport.EqvTypes_forall) <|>
       liftMetaTactic (Meta.applyc . ``Transport.EqvTerm_app) <|>
       liftMetaTactic (Meta.applyc . ``Transport.EqvTerm_app') <|>

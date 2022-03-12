@@ -28,6 +28,17 @@ def EqvTypes_arrow {α α' : Sort u} {β β' : Sort v}
          EqvTypes (α → β) (α' → β') where
   rfl := by rw [h₀.rfl, h₁.rfl]
 
+def EqvTypes_forall' {α}
+  {β : α → Sort u}
+  {β' : α → Sort u}
+  (h : ∀ (x : α), EqvTypes (β x) (β' x)) :
+  EqvTypes (∀ x, β x) (∀ x, β' x) where
+    rfl := by
+      have h₀ : ∀ x, β x = β' x :=
+        λ x => h x |>.rfl
+      have h₁ : β = β' := funext h₀
+      rw  [h₁]
+
 def EqvTypes_forall {α α'} (h' : EqvTypes.{v} α α')
   {β : α → Sort u}
   {β' : α' → Sort u}

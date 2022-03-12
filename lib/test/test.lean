@@ -17,31 +17,49 @@ import Lib.Meta.Dump
 -- 11:0:
 -- [opaque.decls] theorem _private.0.append._impl.append._eq_1 : ∀ {α : Type u_1} (x : List α), append [] x = x
 
+namespace Foo
+
 opaque def append : List α → List α → List α
 | [], ys => ys
 | x :: xs, ys => x :: append xs ys
 
 open Lean.Parser
 open Lean.Elab.Command
+opaque namespace append
+-- #check 3
+
+def foo := 3
+
+-- set_option trace.opaque.proof.state true
+theorem append_assoc (xs ys zs : List α) :
+  append xs (append ys zs) = (xs ++ ys) ++ zs := by
+induction xs <;> simp [*, append]
+induction ys <;> simp [*, append]
+
+end append
+
+
+end Foo
 
 set_option trace.opaque.decls true
 
-syntax (name := opaqueSection)
-   "opaque " "section " ident : command
+-- syntax (name := opaqueSection)
+--    "opaque " "section " ident : command
 
-syntax (name := opaqueSectionEnd)
-  "myend " ident : command
+-- syntax (name := opaqueSectionEnd)
+--   "myend " ident : command
 
 import_private Lean.Elab.Command.addNamespace
 
-@[commandElab opaqueSection]
-def elabOpaqueSection : CommandElab := λ stx => do
-match stx with
-| `(opaque section $id:ident) =>
--- λ stx =>
-  -- println!"foo"
-  addNamespace id.getId
-| _ => println!"wtf"
+-- @[commandElab opaqueSection]
+-- def elabOpaqueSection : CommandElab := λ stx => do
+-- match stx with
+-- | `(opaque section $id:ident) =>
+-- -- λ stx =>
+--   -- println!"foo"
+--   addNamespace id.getId
+-- | _ => println!"wtf"
+
 #print Lean.Options
 open Lean
 #check addDecl
@@ -73,17 +91,17 @@ inferInstanceAs (Repr Lean.KVMap)
 -- #succ Environment
 -- #check EnvExtensionState
 -- #fullname Extension
-deriving instance Repr for Scope
--- deriving instance Repr for State
+-- deriving instance Repr for Scope
+-- -- deriving instance Repr for State
 
-@[commandElab opaqueSectionEnd]
-def elabOpaqueSectionEnd : CommandElab := λ stx => do
-match stx with
-| `(myend $id:ident) =>
-  let s ← get
-  -- println!"id: {id}"
-  print_vars![id]
-| _ => println!"wtf"
+-- @[commandElab opaqueSectionEnd]
+-- def elabOpaqueSectionEnd : CommandElab := λ stx => do
+-- match stx with
+-- | `(myend $id:ident) =>
+--   let s ← get
+--   -- println!"id: {id}"
+--   print_vars![id]
+-- | _ => println!"wtf"
 
 
 -- elab_rules
@@ -93,8 +111,8 @@ match stx with
 --    "opaque " "section " ident
 --    (ppLine (! "end ") command)* "end " ident : command
 
-opaque section append
+-- opaque section append
 
-def foo := 3
+-- def foo := 3
 
-myend append
+-- myend append
