@@ -147,3 +147,11 @@ def applyc (g : MVarId) (n : Name) : MetaM (List MVarId) := do
 apply g (← mkConstWithFreshMVarLevels n)
 
 end Lean.Meta
+
+namespace Lean.Elab.Command
+
+elab "#quiet " "check " t:term : command =>
+  discard <| withoutModifyingEnv <|
+    runTermElabM (some `_check) <| λ _ => Term.elabTerm t none
+
+end Lean.Elab.Command
