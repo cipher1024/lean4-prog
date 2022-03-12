@@ -1,4 +1,19 @@
+/-
+TODO:
+  - opaque struct
+  - opaque inductive
+  - equation tags
+  - constructor / recursor tags?
+    - use them in pattern matching
+    - use them in `induction` / `cases` / `match`
 
+  opaque namespace:
+  - including normal namespace
+  - including normal section
+  - including opaque def
+
+
+-/
 import Lean.Elab.Declaration
 import Lean.Elab.Command
 import Lean.Elab.BuiltinCommand
@@ -173,6 +188,7 @@ syntax (name := opaqueDef)
 
 initialize registerTraceClass `opaque
 initialize registerTraceClass `opaque.decls
+initialize registerTraceClass `opaque.parser
 initialize registerTraceClass `opaque.debug
 initialize registerTraceClass `opaque.proof.state
 
@@ -386,14 +402,15 @@ private def removeImpl : Name → Name
   else removeImpl p
 | n => n
 
-def elabAndTransport (_ : Name) : CommandElabM Unit := do
-let d ← getRef
+def elabAndTransport (_ : Name) (d : Syntax) : CommandElabM Unit := do
 let ns ← getCurrNamespace
 let «def» := d.getArgs[1]
 let kind := «def».getKind
 let rawName := «def»[1][0].getId
 let intlName := ns ++ rawName
 let declName := removeImpl ns ++ rawName
+trace[opaque.parser]"decl kind:   {d.getKind}"
+trace[opaque.parser]"inside kind: {«def».getKind}"
 elabDeclaration d
 let fullName ← resolveGlobalConstNoOverload <| Lean.mkIdent intlName
 if isPrivateName fullName then
@@ -415,17 +432,20 @@ macro "opaque " "namespace " id:ident : command => do
   let implName := Lean.mkIdent `_impl
   let idStr := Lean.Syntax.mkStrLit id.getId.toString
   let command := Lean.mkIdent `command
-  let declaration := Lean.mkIdent `Lean.Parser.Command.declaration
+  let declaration := Lean.mkIdent ``Lean.Parser.Command.declaration
   let idLit := Lean.Syntax.mkNameLit <| toString id
   let implNLit := Lean.Syntax.mkNameLit "_impl"
   `(
-    private def _foo := $defName:ident
+    #quiet check $defName:ident
 
     namespace $idImplName:ident
     namespace $(Lean.mkIdent id.getId):ident
 
-    local elab_rules : $command
-    | `($$d:declaration) => elabAndTransport $idLit:nameLit
+    local elab d:($declaration:ident) : $command =>
+      elabAndTransport $idLit:nameLit d
+
+    -- local elab_rules : $command
+    -- | `($$d:declaration) => elabAndTransport $idLit:nameLit
 
     local elab "end" id:ident : $command:ident => myElabEnd id.getId
 
