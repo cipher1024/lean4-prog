@@ -16,6 +16,7 @@ def isPrivateDeclNamed : Name → Name → Bool
 | num p s _, _ => False
 | anonymous, _ => False
 
+initialize registerTraceClass `importPrivate
 
 elab_rules : command
 | `(import_private $id:ident) => do
@@ -29,9 +30,12 @@ elab_rules : command
   let str _ s _ := id
     | throwError "invalid name: {id}"
   match ls with
-  | [] => throwError "no matches"
+  | [] => throwError "no matches for {id}"
   | [decl] =>
-    let s := Lean.mkIdent s
+    trace[importPrivate]"found: {decl}"
+    let id := (← getCurrNamespace) ++ id.getString!
+    trace[importPrivate]"creating private synonym: {(id)}"
+    let s    := mkIdent s
     let decl := mkIdent decl
     elabCommand (← `(private def $s:ident := $decl:ident))
   | ns =>
