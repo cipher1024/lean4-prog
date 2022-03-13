@@ -617,3 +617,23 @@ macro "falseHyp" h:ident : tactic =>
   `(first
     | refine' Classical.contradiction _ $h; clear $h
     | apply Classical.contradiction $h; clear $h )
+
+elab "fold" foo:ident : tactic => do
+  let mut eqns := #[]
+  if let some xs ← Lean.Meta.getEqnsFor? foo.getId then
+    eqns := xs
+  else if let some x ← Lean.Meta.getUnfoldEqnFor? foo.getId then
+    eqns := #[x]
+  else
+    throwError "{foo.getId} has no equational lemmas"
+  liftMetaTactic1 λ mvar => do
+    let tgt ← inferType (mkMVar mvar)
+    let mut simpLmms : SimpTheorems := {}
+    for x in eqns do
+      simpLmms ← simpLmms.addConst (inv := true) x
+    let r ← Lean.Meta.simp tgt { simpTheorems := simpLmms }
+    let newGoal ← mkFreshExprMVar (some r.expr)
+    if let some pr := r.proof? then
+      assignExprMVar mvar (← mkEqMP pr newGoal)
+    else assignExprMVar mvar newGoal
+    return some newGoal.mvarId!
