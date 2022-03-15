@@ -9,6 +9,7 @@ import Lib.Data.Functor
 import Lib.Data.List
 import Lib.Data.String.Basic
 import Lib.Data.Nat
+import Lib.Data.OrdMap
 import Lib.Data.Prod.Basic
 import Lib.Data.Profunctor
 import Lib.Data.Traversable

@@ -6,12 +6,6 @@ import Lib.Order.Basic
 
 open Std
 
--- TODO: Move this
-class Elem (α : outParam <| Type u) (β : Type v) where
-  elem : α → β → Prop
-
-infix:30 " ∈ " => Elem.elem
-
 namespace Option
 open These
 

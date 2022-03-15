@@ -1,5 +1,6 @@
 
 import Std.Data.AssocList
+import Lib.Data.Foldable
 
 namespace Std.AssocList
 open Std
@@ -40,7 +41,20 @@ def mapFilter :
 -- | cons k x xs =>
 --   simp [mapFilter]
 --   cases f k x <;> simp [keys, *]
+def foldr (f : ι → α → β → β) (x₀ : β) : AssocList ι α → β
+| nil => x₀
+| cons k x xs => f k x (foldr f x₀ xs)
 
+instance : IdxFoldable ι (AssocList ι) where
+  foldl := foldl
+  foldr := foldr
+
+instance : LawfulIdxFoldable ι (AssocList ι) where
+  foldl_sim := by
+    intros; next SIM x₀ y₀ xs h₀ ih =>
+    simp [IdxFoldable.foldl, foldl, Id.run]
+    induction xs generalizing x₀ y₀
+    <;> simp [foldlM, *]
 
 end mapFilter
 
