@@ -4,32 +4,11 @@ import Lean.Elab.Tactic.Location
 import Lean.Elab.Tactic.Match
 import Lean.Meta.Tactic.Split
 import Lean.PrettyPrinter
+
 import Lib.Data.List.Control
 import Lib.Data.Array.Control
-
-class Reflexive (R : α → α → Prop) where
-  refl x : R x x
-
-class Symmetric (R : α → α → Prop) where
-  symmetry {x y} : R x y → R y x
-
-instance : @Reflexive α (.=.) where
-  refl _ := rfl
-
-instance : Reflexive (.↔.) where
-  refl _ := Iff.rfl
-
-instance : @Symmetric α (.=.) where
-  symmetry := Eq.symm
-
-instance : Symmetric (.↔.) where
-  symmetry := Iff.symm
-
-instance : Reflexive (.→.) where
-  refl _ := id
-
-instance : @Reflexive Nat LE.le where
-  refl := Nat.le_refl
+import Lib.Logic.Relation
+import Lib.Meta.Dump
 
 macro "rintro1 " t:term : tactic =>
   `(tactic| intro x; match x with | $t:term => ?_)
@@ -329,18 +308,6 @@ macro_rules
                          (self := ?inst) (b := $t) ?first ?second;
       case inst => infer_instance
       rotate_right 2 )
-
-instance : @Trans Nat Nat Nat LE.le LE.le LE.le where
-  trans := Nat.le_trans
-
-instance : @Trans Nat Nat Nat LT.lt LT.lt LT.lt where
-  trans := Nat.lt_trans
-
-instance : @Trans Nat Nat Nat GE.ge GE.ge GE.ge where
-  trans h h' := Nat.le_trans h' h
-
-instance : @Trans Nat Nat Nat GT.gt GT.gt GT.gt where
-  trans h h' := Nat.lt_trans h' h
 
 open Lean.Elab.Tactic
 open Lean

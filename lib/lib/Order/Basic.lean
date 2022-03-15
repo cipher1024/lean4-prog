@@ -239,6 +239,7 @@ instance : BEq α where
   beq x y := decide (x = y)
 
 open Ordering Ordering.Spec
+open Reflexive
 
 def compareSpec (x y : α) : Ordering.Spec x y (compare x y) :=
 match h: compare x y with
@@ -306,7 +307,7 @@ next h' =>
   trans y <;> auto
 
 @[simp]
-theorem min_le_iff {x y z : α} :
+theorem le_min_iff {x y z : α} :
   z ≤ min x y ↔ z ≤ x ∧ z ≤ y := by
 simp [min]; split
 <;> simp [iff_and_iff_implies_l, iff_and_iff_implies_r]
@@ -316,6 +317,46 @@ next =>
 next h' =>
   rw [not_le] at h'
   trans y <;> auto
+
+@[simp]
+theorem min_le_iff {x y z : α} :
+  min x y ≤ z ↔ x ≤ z ∨ y ≤ z := by
+rw [indirect_le_l]; simp
+constructor
+next =>
+  intros h
+  cases total x y
+  next h₀ =>
+    have h₁ : x ≤ x := refl x
+    left; apply h; auto
+  next h₀ =>
+    have h₁ : y ≤ y := refl _
+    right; apply h; auto
+next =>
+  intros h w h'
+  cases h'; cases h
+  . trans x <;> assumption
+  . trans y <;> assumption
+
+@[simp]
+theorem le_max_iff {x y z : α} :
+  z ≤ max x y ↔ z ≤ x ∨ z ≤ y := by
+rw [indirect_le_r]; simp
+constructor
+next =>
+  intros h
+  cases total x y
+  next h₀ =>
+    have h₁ : x ≤ x := refl x
+    right; apply h; auto
+  next h₀ =>
+    have h₁ : y ≤ y := refl _
+    left; apply h; auto
+next =>
+  intros h w h'
+  cases h'; cases h
+  . trans x <;> assumption
+  . trans y <;> assumption
 
 @[auto]
 theorem le_max_l {x y : α} :
