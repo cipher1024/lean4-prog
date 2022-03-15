@@ -41,6 +41,7 @@ instance : LawfulFoldable List where
     induction x generalizing x₀ <;> simp [foldr, *]
 
 open Traversable
+
 instance : LawfulTraversable List where
   map_eq_traverse := by
     intros; simp [(.<$>.), traverse];
@@ -71,6 +72,7 @@ instance : LawfulTraversable List where
     next x x₀ =>
     induction x generalizing x₀
     <;> simp [List.foldl, List.mapA, *]
+    admit
   traverse_sim := by
     intros; next x R f g h =>
     simp [traverse]

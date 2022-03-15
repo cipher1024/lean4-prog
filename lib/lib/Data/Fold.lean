@@ -457,7 +457,7 @@ focus
   intros _ _ h; cases h; refl
 
 def ofMonoid [Monoid m] (f : α → m) : Fold α m :=
-Fold.mk One.one (λ x y => x * f y)
+Fold.mk 1 (λ x y => x * f y)
 
 def ofMonoid_hom [Monoid m][Monoid m'] (h : MonoidHom m m') (f : α → m) :
   h.fn <$> ofMonoid f = ofMonoid (h.fn ∘ f) := by

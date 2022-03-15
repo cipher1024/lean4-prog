@@ -17,13 +17,13 @@ variable {F} [Foldable F]
 variable {α : Type u}
 
 def foldMap [One m] [Mul m] (f : α → m) (x : F α) : m :=
-foldl (λ acc x => f x * acc) One.one x
+foldl (λ acc x => f x * acc) 1 x
 
 def sum [Zero α] [Add α] : F α → α :=
-foldl (.+.) Zero.zero
+foldl (.+.) 0
 
 def product [One α] [Mul α] : F α → α :=
-foldl (.*.) One.one
+foldl (.*.) 1
 
 end Foldable
 
@@ -176,10 +176,10 @@ rw [← foldl_toList]
 symmetry
 generalize toList x = l
 rw [flip_flip]
-have : ∀ x y : β, x = Endo.run (Op.run one) y → x = y :=
+have : ∀ x y : β, x = Endo.run (Op.run 1) y → x = y :=
   by auto
 apply this; clear this
-generalize one (α := Op (Endo β)) = k
+generalize (1 : Op (Endo β)) = k
 induction l generalizing k
  <;> simp [List.foldl, *]
 
@@ -210,3 +210,115 @@ apply foldr_sim (SIM := R)
 done
 
 end LawfulFoldable
+
+class IdxFoldable (ι : outParam <| Type w)
+      (F : Type u → Type v) where
+  foldl {α β : Type u} (f : β → ι → α → β) (x₀ : β) (t : F α) : β
+  foldr {α β : Type u} (f : ι → α → β → β) (x₀ : β) (t : F α) : β
+  toList {α} (x : F α) : List α :=
+    foldl (λ xs i x => x :: xs) [] x |>.reverse
+  toArray {α} (x : F α) : Array α := toList x |>.toArray
+  length {α} (x : F α) : Nat :=
+    ULift.down <| foldl (λ n _ _ => ⟨n.1.succ⟩) ⟨0⟩ x
+
+namespace IdxFoldable
+
+variable {F} [IdxFoldable ι F]
+variable {α : Type u}
+
+def foldMap [One m] [Mul m] (f : ι → α → m) (x : F α) : m :=
+foldl (λ acc i x => f i x * acc) 1 x
+
+def sum [Zero α] [Add α] : F α → α :=
+foldl (λ acc _ x => acc + x) 0
+
+def product [One α] [Mul α] : F α → α :=
+foldl (λ acc _ x => acc * x) 1
+
+end IdxFoldable
+
+section IdxFoldable
+open IdxFoldable
+
+class LawfulIdxFoldable (ι : outParam <| Type w)
+      (F : Type u → Type v) [outParam <| IdxFoldable ι F] where
+  foldl_sim {α β γ : Type u} {f : β → ι → α → β} {g : γ → ι → α → γ}
+            {SIM : β → γ → Prop} {x₀ y₀} (t : F α) :
+    SIM x₀ y₀ →
+    (∀ i a x y, SIM x y → SIM (f x i a) (g y i a)) →
+    SIM (foldl f x₀ t)
+        (foldl g y₀ t)
+  -- foldr_eq_foldMap {α β} (f : ι → α → β → β) (x : F α) (x₀ : β) :
+  --   foldr f x₀ x =
+  --   (foldMap (λ i x => Op.mk $ Endo.mk (f i x)) x).run.run x₀
+  -- -- toArray_toList {α} (x : F α) : (toList x).toArray = toArray x
+    -- by apply Reflexive.refl
+  -- length_toList {α} (x : F α) : (toList x).length = length x
+ -- :=
+ --    -- let H := @foldl_sim
+ --    -- by prove_length_toList H α x
+ --       have H' : ∀ xs n, List.length xs = n → List.length xs.reverse = n := sorry
+ --       suffices H : ((foldl (flip (.::.)) [] x).length =
+ --                 ULift.down (foldl (β := ULift Nat)
+ --                            (λ ⟨n⟩ _ => ⟨n.succ⟩) ⟨0⟩ x))
+ --                by apply H' _ _ H
+ --       let R :=
+ --         λ (x : List α) (y : ULift Nat) => x.length = y.down;
+ --       by apply foldl_sim (SIM := R)
+ --          . apply Reflexive.refl
+ --          . simp [flip]; auto
+  -- foldl_toList {α β} (f : β → ι → α → β) (x₀ : β) (x : F α) :
+    -- (toList x).foldl f x₀ = foldl f x₀ x
+ -- :=
+ --    -- let H := @foldl_sim
+ --    -- by prove_foldl_toList H
+ --       suffices H : ((foldl (flip (.::.)) [] x).reverse.foldl f x₀ =
+ --                 foldl f x₀ x)
+ --                by {trans <;> try assumption}
+ --       let R :=
+ --         λ (l : List α) (y : β) => l.reverse.foldl f x₀ = y;
+ --       by
+ --          apply foldl_sim (SIM := R) x
+ --       -- apply sim (SIM := R)
+ --          . apply Reflexive.refl
+ --          focus simp [flip]
+
+end IdxFoldable
+
+namespace LawfulIdxFoldable
+-- attribute [simp] length_toList toArray_toList
+open IdxFoldable
+variable {F} [IdxFoldable ι F] [LawfulIdxFoldable ι F]
+
+theorem foldl_hom {α β γ : Type u}
+        {f : β → ι → α → β} {g : γ → ι → α → γ}
+        {h : β → γ} {x₀ y₀} (t : F α) :
+    h x₀ = y₀ →
+    (∀ i x y, h (f x i y) = g (h x) i y) →
+    h (foldl f x₀ t) = foldl g y₀ t := by
+let R x y := h x = y
+intros h₀ h₁
+apply foldl_sim (SIM := R)
+. assumption
+. simp only; intros; substAll; apply h₁
+
+variable [Monoid α] [Monoid β]
+variable (f : MonoidHom α β)
+
+variable {γ : Type u}
+
+theorem foldMap_hom (g₀ : ι → γ → α) (x : F γ) :
+  f (foldMap g₀ x) = foldMap (f ∘ g₀ .) x := by
+apply foldl_hom <;> intros <;> simp
+
+theorem foldl_eq_foldMap (f : β → ι → α → β) (x₀ : β) (x : F α) :
+  foldl f x₀ x =
+  (foldMap (λ i a => Endo.mk (f . i a)) x).run x₀ := by
+  intros; simp [IdxFoldable.foldMap]
+  let g := (fun acc i x => Endo.mk (λ a => f a i x) * acc)
+  symmetry
+  apply foldl_hom (h := λ x => Endo.run x x₀) (f := g) (g := f)
+  . refl
+  intros; simp
+
+end LawfulIdxFoldable

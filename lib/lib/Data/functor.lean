@@ -115,7 +115,7 @@ instance : LawfulFunctor (Const ω) where
 open One
 
 instance [One ω] : Pure (Const ω) where
-  pure _ := one (α := ω)
+  pure _ := (1 : ω)
 
 instance [Mul ω] : Seq (Const ω) where
   seq (x : ω) (y : Unit → ω) := (x * y () : ω)
@@ -321,7 +321,7 @@ namespace Const
 
 @[simp]
 theorem run_pure {α ω} [Monoid ω] x :
-  @Const.run ω α (pure x) = One.one := rfl
+  @Const.run ω α (pure x) = 1 := rfl
 
 @[simp]
 theorem run_seq {α β : Type _} {ω} [Monoid ω]
