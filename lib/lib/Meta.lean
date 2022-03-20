@@ -1,5 +1,5 @@
 import Lean.Elab.PreDefinition
-import Lib.Tactic
+import Lean.Meta.Constructions
 
 namespace Lean.Meta
 open Lean Lean.Elab
@@ -120,6 +120,18 @@ addAndCompile
     DefinitionSafety.safe
 return n
 
+def addInst (us : List Name) (n : Name) (t : Expr) (d : Expr) : MetaM Name := do
+let t ← instantiateMVars t
+let d ← instantiateMVars d
+addAndCompile
+  <| Declaration.defnDecl
+  <| DefinitionVal.mk
+    (ConstantVal.mk n us t) d
+    (ReducibilityHints.regular 10)
+    DefinitionSafety.safe
+addInstance n AttributeKind.global (eval_prio default)
+return n
+
 def addConst (us : List Name) (n : Name) (t : Expr) (d : Expr) : MetaM Name := do
 let t ← instantiateMVars t
 let d ← instantiateMVars d
@@ -137,6 +149,21 @@ addDecl
   <| TheoremVal.mk
     (ConstantVal.mk n us t) d
 return n
+
+def addInductive (levels : List Name) (nparams : Nat)
+  (decls : List InductiveType) : MetaM Unit := do
+addDecl <| Declaration.inductDecl levels nparams decls false
+for t in decls do
+  let n := t.name
+  mkRecOn n
+  mkCasesOn n
+  Lean.mkNoConfusion n
+  mkBelow n
+  mkIBelow n
+for t in decls do
+  let n := t.name
+  mkBRecOn n
+  mkBInductionOn n
 
 def Simp.Result.proof (r : Simp.Result) : MetaM Expr :=
 match r.proof? with
