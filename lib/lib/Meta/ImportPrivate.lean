@@ -30,7 +30,20 @@ elab_rules : command
   let str _ s _ := id
     | throwError "invalid name: {id}"
   match ls with
-  | [] => throwError "no matches for {id}"
+  | [] =>
+    let (ls, ls') := env.constants.fold
+        (λ (l, l') n c =>
+          if n.getString! == s
+            then  (n :: l, l')
+          else if s.isPrefixOf n.getString!
+            then (l, n :: l')
+            else (l, l') ) ([], [])
+    if ls.contains id then
+      throwError "{id} is not private"
+    else
+      let ls := if ls.isEmpty then ls' else ls
+      let fmt := Std.Format.prefixJoin "\n· " ls
+      throwError "no matches for {id}\nDo you mean any of{fmt}"
   | [decl] =>
     trace[importPrivate]"found: {decl}"
     let id := (← getCurrNamespace) ++ id.getString!
