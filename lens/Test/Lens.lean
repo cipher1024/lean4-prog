@@ -29,7 +29,7 @@ a & foo /. x %~ (. + 3)
 
 def test := bar ⟨ { x := 1, y := 0, z := [] } ⟩
 
-theorem check : test = ⟨ { x := 4, y := 0, z := [] } ⟩ :=
+theorem check' : test = ⟨ { x := 4, y := 0, z := [] } ⟩ :=
 rfl
 
 end Lens

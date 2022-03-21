@@ -283,7 +283,6 @@ def elabOpaqueDef : CommandElab := λ stx => do
   let id    := «def»[1].setArg 0 <| Lean.mkIdent insideName
   let «def» := «def».setArg 1 id
   let stx   := mkNode ``Lean.Parser.Command.declaration #[mods, «def»]
-  let ppStx ← liftCoreM <| Lean.PrettyPrinter.ppCommand stx
   trace[opaque.decls]"declNamespace: {ns}"
   Lean.Elab.Command.elabDeclaration stx
   let declName   := ns ++ declName
