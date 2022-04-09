@@ -598,7 +598,7 @@ elab "fold" foo:ident : tactic => do
     let mut simpLmms : SimpTheorems := {}
     for x in eqns do
       simpLmms ← simpLmms.addConst (inv := true) x
-    let r ← Lean.Meta.simp tgt { simpTheorems := simpLmms }
+    let r ← Lean.Meta.simp tgt { simpTheorems := #[simpLmms] }
     let newGoal ← mkFreshExprMVar (some r.expr)
     if let some pr := r.proof? then
       assignExprMVar mvar (← mkEqMP pr newGoal)

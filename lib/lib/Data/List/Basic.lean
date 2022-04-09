@@ -44,12 +44,6 @@ theorem redLength_eq (xs : List α) :
 induction xs <;> simp [redLength, *]
 
 @[simp]
-theorem length_map {f : α → β} (xs : List α) :
-  length (f <$> xs) = length xs := by
-simp [(.<$>.)]
-induction xs <;> simp [length, *]
-
-@[simp]
 theorem take_zero (xs : List α) : xs.take 0 = [] := by
 induction xs <;> simp [take]
 

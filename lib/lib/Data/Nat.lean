@@ -15,6 +15,9 @@ attribute [simp] Nat.add_sub_add_left Nat.add_sub_add_right
 theorem succ_inj {m n : Nat} (h : m.succ = n.succ) : m = n :=
 by cases h; refl
 
+theorem ne_symm {x y : Nat} : x ≠ y → y ≠ x :=
+by intros h h'; subst h'; apply h; rfl
+
 theorem add_lt_of_lt_sub_r {m n k : Nat} :
   m < n - k → m + k < n := by
 induction k generalizing n with
@@ -467,12 +470,9 @@ induction x generalizing y with
     have h : ¬ k ≤ y := by
       intro h₀; apply h; auto
     simp [Hy, Classical.iff_iff_and_or_and]
-    right; constructor
     next =>
       intros h'; apply h; clear h
       trans x * k + k <;>  auto [Nat.le_add_left]
-    next =>
-      apply Nat.not_succ_le_zero
 
 theorem div_lt {x k : Nat} (h : k > 1) (h' : 0 < x) :
   x / k < x := by

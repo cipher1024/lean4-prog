@@ -442,7 +442,7 @@ macro "opaque " "namespace " id:ident : command => do
     namespace $(Lean.mkIdent id.getId):ident
 
     local elab d:($declaration:ident) : $command =>
-      elabAndTransport $idLit:nameLit d
+      elabAndTransport $idLit:name d
 
     -- local elab_rules : $command
     -- | `($$d:declaration) => elabAndTransport $idLit:nameLit

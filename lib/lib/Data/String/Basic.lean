@@ -133,12 +133,7 @@ theorem toList_inj {s₀ s₁ : String} :
   s₀.toList = s₁.toList → s₀ = s₁ :=
 by intro h; cases s₀; cases s₁; cases h; rfl
 
-@[auto]
-theorem one_le_csize (c : Char) : 1 ≤ csize c := by
- cases c
- simp [csize, Char.utf8Size]
- split*
- <;> simp [UInt32.ofNatCore, UInt32.toNat]
+attribute [auto] one_le_csize
 
 @[simp]
 theorem toList_mk {x : List Char} :

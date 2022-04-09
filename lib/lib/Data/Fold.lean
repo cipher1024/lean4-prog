@@ -44,7 +44,7 @@ inductive R : FoldImpl α β → FoldImpl α β → Prop
   SIM x₀ y₀ →
   (∀ x x' y, SIM x x' → SIM (f x y) (g x' y)) →
   (∀ x x', SIM x x' → out x = out' x') →
-  R ⟨γ, x₀, f, out⟩ ⟨γ', y₀, g, out'⟩
+  @R α β ⟨γ, x₀, f, out⟩ ⟨γ', y₀, g, out'⟩
 
 namespace R
 
@@ -376,7 +376,7 @@ instance : LawfulFunctor (Fold α) where
   map_const := by intros; apply funext; intros; refl
 
 inductive AssocSim : α × (β × γ) → (α × β) × γ → Prop
-| intro {x y z} : AssocSim (x, (y, z)) ((x, y), z)
+| intro {x y z} : @AssocSim γ (x, (y, z)) ((x, y), z)
 
 instance : LawfulApplicative (Fold α) where
   seq_assoc x f g:= by
