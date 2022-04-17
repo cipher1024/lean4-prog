@@ -16,8 +16,8 @@ macro "rintro1 " t:term : tactic =>
 syntax "rintro " term,* : tactic
 
 macro_rules
-| `(tactic| rintro ) => `(tactic| skip)
-| `(tactic| rintro $t, $ts) =>
+| `(tactic| rintro $([]),*) => `(tactic| skip)
+| `(tactic| rintro $(t::ts),*) =>
   `(tactic| rintro1 $t <;> rintro $ts )
 
 macro "obtain " p:term " from " d:term : tactic =>
@@ -260,7 +260,7 @@ end SearchTacticM
 def isDone : TacticM Bool :=
 Option.isSome <$> optional done
 
-def allGoals [Monad m] [MonadLift TacticM m] (tac : m PUnit) : m PUnit := do
+def allGoals [Monad m] [MonadLiftT TacticM m] (tac : m PUnit) : m PUnit := do
 let gs ← getGoals
 let gs' ← gs.mapM λ g => do setGoals [g]; tac; getGoals
 setGoals gs'.join
@@ -268,7 +268,7 @@ setGoals gs'.join
 def tryTac [Alternative m] [Pure m] (x: m Unit) : m Unit :=
 Alternative.orElse x (λ _ => pure ())
 
-def iterate [Monad m] [MonadLift TacticM m]: Nat → m PUnit → m PUnit
+def iterate [Monad m] [MonadLiftT TacticM m]: Nat → m PUnit → m PUnit
 | 0, _ => pure ()
 | Nat.succ n, tac => do
   unless (← isDone) do
@@ -579,6 +579,18 @@ theorem contradiction {p q} (hp : p) (hnp : ¬ p) : q :=
 by cases hnp hp
 
 end Classical
+
+syntax "apply' " term,* : tactic
+
+macro_rules
+| `(tactic| apply' $(xs):term,* ) => do
+    if xs.elemsAndSeps.size == 0 then
+      `(tactic| skip)
+    else if xs.elemsAndSeps.size == 0 then
+      `(tactic| apply $(xs.elemsAndSeps[0]):term)
+    else
+      let xs' := { xs with elemsAndSeps := xs.elemsAndSeps[2:] }
+      `(tactic| apply $(xs.elemsAndSeps[0]):term; apply' $(xs'):term,*)
 
 macro "falseHyp" h:ident : tactic =>
   `(first

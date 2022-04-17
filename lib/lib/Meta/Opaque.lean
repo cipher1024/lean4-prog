@@ -310,12 +310,6 @@ open Lean.Parser.Tactic
 open Lean.Elab.Tactic
 open Lean.Elab.Term
 
-@[inline]
-def liftMetaTactic1' (tac : MVarId → MetaM (α × MVarId)) : TacticM α := do
-let (x, g) ← liftMetaMAtMain tac
-replaceMainGoal [g]
-return x
-
 def showProofState : TacticM MessageData := do
 let gs ← getGoals
 let mut res : Format := s!"Goals ({gs.length})"

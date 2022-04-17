@@ -1,8 +1,25 @@
 import Lean.Elab.PreDefinition
 import Lean.Meta.Constructions
 
+namespace Lean.Syntax
+open Lean Lean.Elab Lean.Elab.Tactic Lean.Meta
+
+def exprToSyntax (e : Expr) : Elab.TermElabM Syntax :=
+Lean.MonadQuotation.withFreshMacroScope do
+  let mvar ← Term.elabTerm (← `(?m)) none
+  assignExprMVar mvar.mvarId! e
+  `(?m)
+
+end Lean.Syntax
+
 namespace Lean.Meta
-open Lean Lean.Elab
+open Lean Lean.Elab Lean.Elab.Tactic
+
+@[inline]
+def liftMetaTactic1' (tac : MVarId → MetaM (α × MVarId)) : TacticM α := do
+let (x, g) ← liftMetaMAtMain tac
+replaceMainGoal [g]
+return x
 
 def instantiateBVarAux (i : Nat) (vs : List Expr) (e : Expr) :
   Expr :=
