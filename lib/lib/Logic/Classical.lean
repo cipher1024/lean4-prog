@@ -54,10 +54,10 @@ focus
 @[simp]
 theorem not_not (p : Prop) : ¬ ¬ p ↔ p := by
 constructor <;> intros h
-focus
-  apply byContradiction; intros h'
+next =>
+  apply byContradiction; intro h'
   apply (h h')
-focus
+next =>
   intros h'
   apply h' h
 
