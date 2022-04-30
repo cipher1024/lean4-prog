@@ -1,11 +1,8 @@
 
-
 structure DecSubtype {T : Type u} (p : T → Bool) where
 mkImpl ::
   val : T
-  property {} : p val = true
--- #check @DecSubtype.mkImpl
--- #check DecSubtype
+  property : p val = true
 
 namespace DecSubtype
 

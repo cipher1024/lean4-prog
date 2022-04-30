@@ -9,6 +9,46 @@ import Lib.Data.Traversable
 import Lib.Equiv
 import Lib.Tactic
 
+namespace Prod
+
+@[simp]
+def assoc : (α × β) × γ → α × β × γ
+| ((x,y),z) => (x,y,z)
+
+end Prod
+
+-- namespace Applicative
+-- def Foo : Type u → Type u := sorry
+-- instance : Applicative F := sorry
+
+-- def prod (x : Foo.{u} α) (y : Foo.{v} β) : Foo (α × β) :=
+--         -- {z : F γ} :
+-- -- (.,.) <$> x <*> y
+-- sorry
+
+-- theorem prod_prod {x : Foo.{u} α} {y : Foo.{u} β}
+--         {z : Foo.{u} γ} :
+--   prod x (prod y z) = Prod.assoc <$> prod (prod x y) z := _
+
+-- -- #check Applicative
+-- end Applicative
+-- #exit
+
+-- namespace Applicative
+-- variable {F : Type u → Type v} [Applicative F]
+
+-- def prod (x : F α) (y : F β) : F (α × β) :=
+--         -- {z : F γ} :
+-- (.,.) <$> x <*> y
+
+-- theorem prod_prod {γ} {x : F α} {y : F β}
+--         {z : F γ} :
+--   prod x (prod y z) = Prod.assoc.{u,u,u} <$> prod (prod x y) z := _
+
+-- -- def prod
+-- #check Applicative
+-- end Applicative
+
 structure FoldImpl (α β : Type u) where
   γ : Type u
   x₀ : γ
@@ -31,20 +71,18 @@ instance : LawfulProfunctor FoldImpl where
 
 namespace FoldImpl
 
--- inductive R : FoldImpl α β → FoldImpl α β → Prop
--- | intro {γ γ' x₀ y₀ f g out out'} :
---   (Heq : Equiv γ γ') →
---   Heq.to x₀ = y₀ →
---   (∀ x y, g (Heq.to x) y = Heq.to (f x y)) →
---   (∀ x, out x = out' (Heq.to x)) →
---   R ⟨γ, x₀, f, out⟩ ⟨γ', y₀, g, out'⟩
-
 inductive R : FoldImpl α β → FoldImpl α β → Prop
 | intro {γ γ' x₀ y₀ f g out out'} (SIM : γ → γ' → Prop) :
   SIM x₀ y₀ →
   (∀ x x' y, SIM x x' → SIM (f x y) (g x' y)) →
   (∀ x x', SIM x x' → out x = out' x') →
   @R α β ⟨γ, x₀, f, out⟩ ⟨γ', y₀, g, out'⟩
+
+-- #check @R.intro
+-- -- @R.intro : ∀ {α β γ γ' : Type u_1} {x₀ : γ} {y₀ : γ'} {f : γ → α → γ} {g : γ' → α → γ'} {out : γ → β} {out' : γ' → β},
+-- --   R { γ := γ, x₀ := x₀, f := f, out := out } { γ := γ', x₀ := y₀, f := g, out := out' }
+
+
 
 namespace R
 
@@ -145,6 +183,26 @@ instance : Applicative (FoldImpl.{u} α) where
            out := λ ⟨a, b⟩ => f.out a <| x.out b
           }
 
+def prod {α β : Type u} (x : FoldImpl.{u} σ α) (y : FoldImpl.{u} σ β) : FoldImpl.{u} σ (α × β) where
+  γ := x.γ × y.γ
+  x₀ := (x.x₀, y.x₀)
+  f := λ ⟨a, b⟩ ι => (x.f a ι, y.f b ι)
+  out := Prod.map x.out y.out
+
+theorem map_seq_eq_prod {α β γ} {f : α → β → γ} {x : FoldImpl.{u} ι α} {y : FoldImpl.{u} ι β} :
+  f <$> x <*> y = uncurry f <$> prod x y := rfl
+
+-- #check @Prod.assoc
+-- set_option pp.universes true
+-- #check @prod
+
+-- @[simp]
+-- theorem prod_prod {γ} {x : FoldImpl.{u} ι α} {y : FoldImpl.{u} ι β}
+--         {z : FoldImpl.{u} ι γ} :
+--   prod x (prod y z) = Prod.assoc.{u,u,u} <$> prod (prod x y) z :=
+-- by simp [prod, (.<$>.)]
+--   -- prod x (prod y z) = Prod.assoc.{u,u,u} <$> prod (prod x y) z := _
+
 @[simp]
 theorem x₀_seq {α β γ : Type _} (f : FoldImpl α (β → γ)) (x : FoldImpl α β) :
   (f <*> x).x₀ = (f.x₀, x.x₀) := rfl
@@ -157,13 +215,29 @@ theorem f_seq {α β γ : Type _} (f : FoldImpl α (β → γ)) (x : FoldImpl α
 theorem out_seq {α β γ : Type _} (f : FoldImpl α (β → γ)) (x : FoldImpl α β) :
   (f <*> x).out = (λ (i, j) => f.out i $ x.out j) := rfl
 
+
+@[simp]
+theorem x₀_prod {α β γ : Type _} (f : FoldImpl α β) (x : FoldImpl α γ) :
+  (prod f x).x₀ = (f.x₀, x.x₀) := rfl
+
+@[simp]
+theorem f_prod {α β γ : Type _} (f : FoldImpl α β) (x : FoldImpl α γ) :
+  (prod f x).f = (λ (a, b) i => (f.f a i, x.f b i)) := rfl
+
+@[simp]
+theorem out_prod {α β γ : Type _} (f : FoldImpl α β) (x : FoldImpl α γ) :
+  (prod f x).out = (λ (i, j) => (f.out i, x.out j)) := rfl
+
 end FoldImpl
 
 def Fold (α β : Type _) := Quot (@FoldImpl.R α β)
 
 namespace Fold
 
-variable {α α' β β'} (f : α' → α) (g : β → β')
+variable {α α' β β'}
+
+section dimap
+variable (f : α' → α) (g : β → β')
 
 protected def dimap : Fold α β → Fold α' β' :=
 Quot.lift (Quot.mk _ ∘ dimap f g) $ by
@@ -175,6 +249,8 @@ Quot.lift (Quot.mk _ ∘ dimap f g) $ by
     . intros; simp [(.∘.)]; auto
     intros; simp [(.∘.)]; congr
     auto
+
+end dimap
 
 instance : Profunctor Fold where
   dimap := Fold.dimap
@@ -338,16 +414,15 @@ match f, f', hf with
     let R | (x, y), (x', y') => Heq_f x x' ∧ Heq_x y y'
     refine' ⟨R, _, _, _⟩
     . auto
-    focus
+    next =>
       intros x x' y; cases x; cases x'
       show  _ ∧ _ → _ ∧ _
       simp only ; intros h; auto
-    focus
+    next =>
       intros x x' y; cases x; cases x'; cases y
       simp [Seq.seq]
       show _ = _
       rw [ha₂]; apply congrArg <;> auto
-    focus
       auto
 
 def seq {α β : Type u} (f : Fold σ (α → β)) (x : Unit → Fold σ α) : Fold σ β := by
@@ -355,6 +430,38 @@ apply Quot.liftOn₂ f (x ()) (λ a b => Quot.mk _ $ Seq.seq a (λ () => b))
  <;> intros <;> apply Quot.sound
  <;> apply seq_lift <;> auto
 
+-- elab "foo" : tactic => do
+--   let lctx ← Lean.getLCtx
+--   for x in lctx do
+--     println!"{x.userName}"
+-- set_option pp.inaccessibleNames false in
+
+-- theorem prod_lift (x x' : FoldImpl σ α) (y y' : FoldImpl σ β)
+--     (hx : FoldImpl.R x x')
+--     (hy : FoldImpl.R y y') :
+--   FoldImpl.R (FoldImpl.prod x y) (FoldImpl.prod x' y') := by
+-- cases hx with
+-- | intro Heq_x ha₀ ha₁ ha₂ =>
+-- cases hy with
+-- | intro Heq_y hb₀ hb₁ hb₂ =>
+-- -- clear f g x x' y y' hx hy
+-- let R | (x, y), (x', y') => Heq_x x x' ∧ Heq_y y y'
+-- refine FoldImpl.R.intro R ?H₀ ?Hstep ?Hout
+-- case H₀ => auto
+-- case Hstep =>
+--   simp;
+--   intros x y s Hr
+--   -- intro (x , x') (y, y');
+--   -- skip
+-- case Hout =>
+--   -- foo
+--   -- clear
+--   skip
+
+-- #exit
+
+-- def prod {α β : Type u} (x : Fold σ α) (y : Fold σ β) : Fold σ (α × β) :=
+-- _
 
 def seq_mk_mk' {α β : Type u} (f : FoldImpl σ (α → β)) (x : Unit → FoldImpl σ α) :
   (seq (Quot.mk _ f) (λ a => Quot.mk _ (x a)) : Fold σ β) =

@@ -259,9 +259,9 @@ abbrev isSpace (c : Char) : Prop := c.isWhitespace
 mutual
 open ImportToken
 
-partial def readWord (r : RawTokens) (i : Nat) (s : Substring) :
+partial def readWord (r : RawTokens) (i : String.Pos) (s : Substring) :
   RawTokens :=
-if i = s.bsize
+if i.byteIdx = s.bsize
   then r.push <| moduleName s
 else if isSpace <| s.get i then
   let lex₀ := s.extract 0 i
@@ -270,13 +270,13 @@ else if isSpace <| s.get i then
           then importKw
           else moduleName lex₀
   let r' := r.push tok
-  readSpace r' (rest.next 0) rest
+  readSpace r' (rest.next {}) rest
 else
   readWord r (s.next i) s
 
-partial def readSpace (r : RawTokens) (i : Nat) (s : Substring) :
+partial def readSpace (r : RawTokens) (i : String.Pos) (s : Substring) :
   RawTokens :=
-if i = s.bsize
+if i.byteIdx = s.bsize
   then r.push <| space s
 else if isSpace <| s.get i
   then readSpace r (s.next i) s
@@ -521,7 +521,7 @@ end IO.FS.DirEntry
 
 /-- Return true iff `p` is a suffix of `s` -/
 def String.isSuffixOf (p : String) (s : String) : Bool :=
-  substrEq p 0 s (s.bsize - p.bsize) p.bsize
+  substrEq p 0 s ⟨s.endPos.byteIdx - p.endPos.byteIdx⟩ p.endPos.byteIdx
 
 def System.FilePath.isInvisible (p : FilePath) : Bool :=
 ".".isPrefixOf <| p.fileStem |>.getD ""

@@ -428,7 +428,8 @@ instance : IsFunctor P.apply where
 instance instNFunctorApplyApply {m} (v : Vec (PFunctor n) m) i :
   IsFunctor ((v.map PFunctor.apply).apply i) :=
 match m, v, i with
-| _, Vec.cons x xs, Fin'.ZFin => instIsFunctor _
+| _, Vec.cons x xs, Fin'.ZFin =>
+  inferInstanceAs (IsFunctor x.apply)
 | _, Vec.cons x xs, Fin'.SFin i => instNFunctorApplyApply xs i
 
 end PFunctor

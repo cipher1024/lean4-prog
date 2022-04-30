@@ -113,3 +113,10 @@ theorem flip_flip {α β γ} (f : α → β → γ) :
 
 theorem comp_lam {α β γ} (f : α → β) (g : β → γ) :
   (g ∘ λ a => f a) = λ a => g (f a) := rfl
+
+@[simp]
+def curry (f : α × β → γ) (x : α) (y : β) := f (x, y)
+
+@[simp]
+def uncurry (f : α → β → γ) : α × β → γ
+| (x, y) => f x y

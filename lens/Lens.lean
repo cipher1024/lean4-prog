@@ -60,8 +60,7 @@ withFreshMacroScope do
     let setterT ← mkArrow (← mkArrow t t) (← mkArrow s s)
     let instInhabited ← mkAppOptM ``Inhabited #[t]
     let inst ← optional (synthInstance instInhabited)
-    let delabS ← Lean.PrettyPrinter.delab
-       (← getCurrNamespace) (← getOpenDecls) s
+    let delabS ← Lean.PrettyPrinter.delab s
     let setter ←
       if inst.isSome then
         `(λ f x =>

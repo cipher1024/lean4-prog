@@ -310,10 +310,13 @@ refl
 
 theorem ext (x y : Op1 F α) : x.run = y.run → x = y := id
 
-instance : LawfulApplicative (Op1 F) := by
-constructor <;> intros <;> apply Op1.ext
-<;> simp [seqLeft_eq, seqRight_eq, pure_seq, seq_assoc]
-<;> refl
+instance : LawfulApplicative (Op1 F) :=
+sorry -- TODO: `constructor` is broken as of 2022-04-16
+
+-- constructor
+-- <;> intros <;> apply Op1.ext
+-- <;> simp [seqLeft_eq, seqRight_eq, pure_seq, seq_assoc]
+-- <;> refl
 
 end Op1
 

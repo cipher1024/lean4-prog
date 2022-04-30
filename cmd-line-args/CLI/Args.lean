@@ -280,9 +280,7 @@ def mkFlagDescr (struct field : Name) :
   TermElabM (Option FlagDescr) := do
 let t ← typeOfField struct field
 let proj := (← getFieldInfo! struct field).projFn
-let s ← Lean.PrettyPrinter.delab
-    (← getCurrNamespace)
-    (← getOpenDecls) t
+let s ← Lean.PrettyPrinter.delab t
 match s with
 | `(CmdLineFlag $x $y $descr) =>
   return some {
