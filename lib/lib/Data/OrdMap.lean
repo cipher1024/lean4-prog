@@ -18,6 +18,27 @@ def mergeWith (f : These α β → Option γ) :
 
 end Option
 
+namespace These
+
+@[simp]
+def unionWith (f : α → α → α) : These α α → Option α
+| inl x => some x
+| inr x => some x
+| both x y => some <| f x y
+
+@[simp]
+def intersectionWith (f : α → β → γ) : These α β → Option γ
+| inl x => none
+| inr x => none
+| both x y => some <| f x y
+
+@[simp]
+def differenceWith (f : α → β → Option α) : These α β → Option α
+| inl x => some x
+| inr x => none
+| both x y => f x y
+
+end These
 
 namespace Std.AssocList
 
@@ -230,10 +251,7 @@ def mergeWith (x : OrdMap k α) (y : OrdMap k β) : OrdMap k γ where
   sorted := Sorted_zipWith _ x.sorted y.sorted
 
 def unionWith :=
-mergeWith (λ a => λ
-         | inl x => some x
-         | both x y => some <| f a x y
-         | inr x => some x)
+mergeWith (λ a => These.unionWith (f a))
 
 def union : OrdMap k α → OrdMap k α → OrdMap k α :=
 unionWith (λ a x _ => x)
@@ -241,19 +259,18 @@ unionWith (λ a x _ => x)
 variable (f : k → α → β → γ)
 
 def intersectionWith :=
-mergeWith (λ a => λ
-         | inl x => none
-         | both x y => some <| f a x y
-         | inr x => none)
+mergeWith (λ a => These.intersectionWith (f a))
 
 def intersection : OrdMap k α → OrdMap k α → OrdMap k α :=
 intersectionWith (λ a x _ => x)
 
+variable (f : k → α → β → Option α)
+
+def differenceWith : OrdMap k α → OrdMap k β → OrdMap k α :=
+mergeWith (λ a => These.differenceWith (f a))
+
 def difference : OrdMap k α → OrdMap k β → OrdMap k α :=
-mergeWith (λ a => λ
-         | inl x => some x
-         | both x y => none
-         | inr x => none)
+differenceWith λ a x _ => none
 
 def insert (x : k) (v : α) : OrdMap k α → OrdMap k α :=
 union (singleton x v)

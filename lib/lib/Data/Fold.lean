@@ -594,7 +594,7 @@ Fold.mk 0 (λ n _ => n.succ)
 def sum [Zero α] [Add α] : Fold α α :=
 Fold.mk zero (.+.)
 
-def prod [One α] [Mul α] : Fold α α :=
+def product [One α] [Mul α] : Fold α α :=
 Fold.mk one (.*.)
 
 end Fold

@@ -209,6 +209,53 @@ apply foldr_sim (SIM := R)
 . simp only; intros; substAll; apply h₁
 done
 
+-- def OpRun : MonoidHom (Op (Endo α)) (Endo α) where
+--   fn := Op.run
+--   fn_id := _
+--   fn_mul := _
+
+-- example x y : x + Nat.succ y = y → x = y := by
+-- assume' h : Nat.succ (x + y) = y
+-- rw [← h]
+
+theorem product_eq_foldr (x : F α) :
+  product x = foldr (.*.) 1 x := by
+simp [product, foldMap]
+rw [foldr_eq_foldl_reverse_toList, ← foldl_toList]
+generalize (toList x) = xs
+generalize hz : (1 : α) = z
+suffices hz' : List.foldl (.*.) z xs =
+         z * List.foldl (flip (.*.)) 1 (List.reverse xs) by
+  rw [hz', ← hz, Monoid.one_mul]
+clear hz
+induction xs generalizing z
+<;> simp only [List.foldl, List.reverse_cons, List.foldl_app, *, flip]
+<;> simp only [Monoid.mul_assoc, Monoid.mul_one]
+
+-- let
+-- let f (y : Op (Endo α)) := y.run.run 1
+-- let g (x y : α) := x * y
+-- let R (x : α) (y : Op (Endo α)) := x = y.run.run 1
+-- apply foldl_sim (SIM := R)
+-- next => rfl
+-- next =>
+--   intros a x y
+--   assume Hsim : _ = _
+--   show _ = _
+--   simp [Hsim]
+-- -- symmetry
+
+-- apply foldl_hom (h := f)
+-- next => rfl
+-- next =>
+  -- intros
+  -- simp
+  -- simp [1]
+-- let f : MonoidHom (Op (Endo α)) (Endo α)
+-- apply congr _ rfl; apply congrArg
+-- rw [foldMap_hom (f := Op.run) ]
+-- -- apply foldMap
+
 end LawfulFoldable
 
 class IdxFoldable (ι : outParam <| Type w)
