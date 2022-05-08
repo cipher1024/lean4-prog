@@ -616,3 +616,7 @@ elab "fold" foo:ident : tactic => do
       assignExprMVar mvar (← mkEqMP pr newGoal)
     else assignExprMVar mvar newGoal
     return some newGoal.mvarId!
+
+macro "assume " h:ident " : " t:term : tactic =>
+  `(tactic|
+      refine' λ $h:ident : $t => ?_  )
