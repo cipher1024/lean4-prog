@@ -13,6 +13,9 @@ package sat (dir) (args) {
       { name := `lens
         src :=  Source.path "lens"
         args := args },
+      { name := `primes
+        src :=  Source.path "primes"
+        args := args },
       { name := `cli
         src :=  Source.path "cmd-line-args"
         args := args },
@@ -20,7 +23,7 @@ package sat (dir) (args) {
         src :=  Source.path "advent"
         args := args },
       { name := `lean_tools
-        src :=  Source.path "lean_tools"
+        src :=  Source.path "lean-tools"
         args := args } ] }
 
 -- def getLocalTarget (dep : Dependency) : Option String :=
