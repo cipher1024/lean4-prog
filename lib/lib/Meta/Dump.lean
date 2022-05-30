@@ -1,5 +1,6 @@
 import Lean.PrettyPrinter
 
+import Lib.Meta.DeclGraph
 import Lib.Meta.Format
 import Lib.Data.List.Control
 import Lib.Data.String.Defs
@@ -94,7 +95,7 @@ elab "dump_list!" "[" t:(term,*) "]" : term =>
 
 elab "dump_vars!" "[" t:(term,*) "]" : term => do
   let msg ← formatListMonadic t.getSepArgs.toList
-  elabTerm (← `(formatVars $msg)) none
+  Lean.Elab.Term.elabTerm (← `(formatVars $msg)) none
 
 elab "print_vars!" "[" t:(term,*) "]" : term => do
   dumpListMonadic t.getSepArgs.toList
@@ -104,7 +105,7 @@ elab "dump!" t:term : term =>
 
 elab "trace_vars![" id:ident "]" "[" t:(term,*)  "]" : term => do
   let msg ← formatListMonadic t.getSepArgs.toList
-  elabTerm (← `(do
+  Lean.Elab.Term.elabTerm (← `(do
     let cls := $(quote id.getId.eraseMacroScopes)
     if (← Lean.isTracingEnabledFor cls) then
 

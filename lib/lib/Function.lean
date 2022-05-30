@@ -48,7 +48,7 @@ theorem inv_comp_of_injective [Nonempty α] {f : α → β}
 apply funext; intros x; simp [inv]
 apply h
 apply Classical.epsilon_spec (p := λ y => f y = f x)
-exists x; refl
+exists x
 
 theorem comp_inv_of_surjective [Nonempty α] {f : α → β}
         (h : Surjective f) :

@@ -35,7 +35,7 @@ def foldlIdx₂
     (ar : Grid m n α) (f : Fin m → Fin n → α → β → β) (x₀ : β) : β :=
 ar.foldlIdx f x₀
 
-def mk (cells : Array (Array Nat)) : OptionM Board := do
+def mk (cells : Array (Array Nat)) : Option Board := do
 let cells ← Grid.mk cells
 return {
     cells := cells,
@@ -93,7 +93,7 @@ def Board.partRun (ar : Subarray Nat) (b : Board) : (n : Nat) → Board
 | 0 => b
 | Nat.succ n =>
 if hsize : 0 < ar.size then
-  let (_, b') := b.score $ ar.get 0 hsize
+  let (_, b') := b.score $ ar.get ⟨0, hsize⟩
   partRun ar.popFront b' n
 else
   b
@@ -106,7 +106,7 @@ def Board.run (n : Nat) (ar : Subarray Nat) (b : Board) :
   Option (Nat × Nat) :=
 if hsize : 0 < ar.size then
   -- trace[foo] b'
-  let draw := ar.get 0 hsize
+  let draw := ar.get ⟨0, hsize⟩
   let (win, b') := b.score draw
   let n' := n + 1
   if win then
@@ -157,7 +157,7 @@ def parseInput (input : Array String) : IO Game := do
   return ⟨draws, boards⟩
 
 -- Part 1
-def Game.findWinner (g : Game) : Option Nat := OptionM.run $ do
+def Game.findWinner (g : Game) : Option Nat := do
 let combine : Nat × Nat → Nat × Nat → Nat × Nat
     | ⟨n,score⟩, ⟨n',score'⟩ =>
       if n > n' then ⟨n,score⟩ -- <- Part 2

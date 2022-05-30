@@ -27,7 +27,7 @@ def isEdge (e : Expr) (n n' : Name) : Bool :=
 isEdge' e.consumeMData n n'
 
 def listEdges' (e : Expr) (noProps : Bool) :
-  OptionM (Name × List (Name × Name)) := do
+  Option (Name × List (Name × Name)) := do
 match e with
 | forallE _ d b m => do
   let (to, es) ← listEdges' b noProps

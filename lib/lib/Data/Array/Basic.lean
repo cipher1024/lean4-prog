@@ -318,16 +318,16 @@ end Array
 
 namespace Subarray
 
-def size (ar : Subarray α) : Nat := ar.stop - ar.start
+-- def size (ar : Subarray α) : Nat := ar.stop - ar.start
 
-def get (ar : Subarray α) (i : Fin ar.size) : α :=
-have : ar.start + i < Array.size ar.as := by
-  have := Nat.add_lt_of_lt_sub_l i.2
-  apply Nat.lt_of_lt_of_le this ar.h₂
-ar.as.get ⟨ar.start + i, this⟩
+-- def get (ar : Subarray α) (i : Fin ar.size) : α :=
+-- have : ar.start + i < Array.size ar.as := by
+--   have := Nat.add_lt_of_lt_sub_l i.2
+--   apply Nat.lt_of_lt_of_le this ar.h₂
+-- ar.as.get ⟨ar.start + i, this⟩
 
-def get! [Inhabited α] (ar : Subarray α) (i : Nat) : α :=
-ar.as.get! (ar.start + i)
+-- def get! [Inhabited α] (ar : Subarray α) (i : Nat) : α :=
+-- ar.as.get! (ar.start + i)
 
 def get? (ar : Subarray α) (i : Nat) : Option α :=
 ar.as.get? (ar.start + i)
@@ -838,7 +838,7 @@ mkImpl ::
 
 namespace Buffer
 
-def mk (ar : Array α) : OptionM (Buffer m α) :=
+def mk (ar : Array α) : Option (Buffer m α) :=
 if h : ar.size = m then return ⟨ar, h⟩
 else none
 
@@ -883,7 +883,7 @@ namespace Grid
 
 variable {m n : Nat} {α β : Type _}
 
-def mk (ar : Array (Array α)) : OptionM (Grid m n α) := do
+def mk (ar : Array (Array α)) : Option (Grid m n α) := do
 Grid.mkImpl <$> Buffer.mk (← ar.mapM Buffer.mk)
 
 @[inline]

@@ -100,12 +100,12 @@ open IO.FS System System.FilePath
 
 def toModuleName (dir : DirEntry) : ModuleName :=
 ModuleName.mk
-<| Option.getD (OptionM.run do
+<| Option.getD (do
      let fn := FilePath.mk dir.fileName
      let base := components <| (← fn.parent)
      let last := (← fn.fileStem)
      let path := base ++ [last]
-     return path.toArray )
+     return path.toArray)
    #[]
 
 def importStmt (dir : DirEntry) (camelCase := true) : String :=

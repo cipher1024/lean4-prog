@@ -81,7 +81,7 @@ def get? (m : Median) : Option Nat :=
   m.med
 
 def push (med : Median) (x : Nat) : Median :=
-OptionM.run (do
+(do
   if let some m := med.middle then
     let med' :=
       if m ≤ x then
@@ -114,7 +114,7 @@ OptionM.run (do
            higher := med.higher.tail.insert x,
            middle := some h,
            med := some h }
-  ) |>.getD { med with
+  : Option _) |>.getD { med with
                   med := some x
                   middle := some x }
 

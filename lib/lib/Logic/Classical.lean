@@ -29,7 +29,7 @@ constructor <;> intros h
 next =>
   intros x Hp
   apply h; clear h
-  exists x; assumption
+  exists x
 next =>
   intros h'
   cases h' with | intro y h' =>
@@ -44,7 +44,7 @@ next =>
   apply h; clear h; intro x
   apply byContradiction; intros h₁
   apply h₀; clear h₀
-  exists x; assumption
+  exists x
 next =>
   intros h₀
   cases h with | intro x h =>

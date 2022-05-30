@@ -141,8 +141,7 @@ partial def Key.propagateUnits (k : Key) : Key := Id.run do
 instance : Decidable (Char.lt c₀ c₁) :=
 inferInstanceAs (Decidable (c₀.val < c₁.val))
 
-def Key.apply (k : Key) (s : String) : Option Nat :=
-OptionM.run do
+def Key.apply (k : Key) (s : String) : Option Nat := do
   let s' ← s.toArray.mapM <| HashMap.find? k.fullSubst
   let s' := String.mk
          <| s'.qsort (λ c₀ c₁ => (Char.lt c₀ c₁)) |>.toList
@@ -179,18 +178,15 @@ instance : Alternative SearchM where
     x _ f <|> y () _ f
 -- def Key.search
 
-instance : Coe (OptionM α) (SearchM α) where
-  coe x s f := OptionM.run <| x >>= f
-
 instance : Coe (Option α) (SearchM α) where
-  coe x s f := OptionM.run <| x >>= f
+  coe x s f := x >>= f
 
 def pick (ar : Array α) : SearchM α :=
-λ s f => OptionM.run <| Array.firstM f ar
+λ s f => Array.firstM f ar
 
-def SearchM.run (x : SearchM α) : OptionM α := x _ some
+def SearchM.run (x : SearchM α) : Option α := x _ some
 
-def Key.guess (k : Key) : OptionM Key :=
+def Key.guess (k : Key) : Option Key :=
 SearchM.run do
   let mut k := k
   let mut s := mkHashSet
@@ -202,7 +198,7 @@ SearchM.run do
       k := { k with fullSubst := k.fullSubst.insert c v }
     else
       s := s.insert <| k.fullSubst.find! c
-  if let some r := OptionM.run <| k.unprocessed.mapM k.apply then
+  if let some r := k.unprocessed.mapM k.apply then
     for str in k.unprocessed do
       let s' : Nat ← k.apply str
       -- if ¬ patRev.contains s' then
@@ -221,7 +217,7 @@ partial def Key.round (k : Key) (bound := 7) : Key :=
   let m := k.measure
   let k' := k.process.propagateUnits.use
   -- let k' := k
-  if let some k' := OptionM.run k'.guess then
+  if let some k' := k'.guess then
     k'
   else
     if k'.measure == m || bound == 0 then k'
@@ -269,8 +265,7 @@ match counts.find? s.length with
 | _ => none
 
 def decode₂ (s : Array (Array String)) :
-    Option (Array Nat × Array Nat) :=
-OptionM.run do
+    Option (Array Nat × Array Nat) := do
   let x := s[0]
   let y := s[1]
   let k := Key.mk <| x ++ y
@@ -280,15 +275,14 @@ OptionM.run do
   let fullSubst := k.fullSubst.toList
   -- dbgTrace s!"{dump! k.subst.map HashSet.toList |>.toList}" λ _ =>
   -- dbgTrace s!"{dump! fullSubst}" λ _ =>
-  let x' ← OptionM.run <| x.mapM k.decoded.find?
-  let y' ← OptionM.run <| y.mapM k.decoded.find?
+  let x' ← x.mapM k.decoded.find?
+  let y' ← y.mapM k.decoded.find?
   return (#[],y')
   -- #eval counts.toList
   -- #eval decode "abcdefg"
 
 def decode₃ (s : Array (Array String)) :
-    Option Nat :=
-OptionM.run do
+    Option Nat := do
   let (_, x) ← decode₂ s
   let x := String.intercalate "" <| x.map toString |>.toList
   String.toNat? x
@@ -321,7 +315,7 @@ def main : IO Unit := do
 let ar ← parseInput <| (← IO.FS.lines inputFileName)
 -- let ar ← parseInput <| (← lines examples₀)
 -- let ar ← parseInput <| (← lines examples₁)
-let some decoded := OptionM.run <| ar.mapM decode₃
+let some decoded := ar.mapM decode₃
   | throw <| IO.userError "parse error"
 let output : Nat := Foldable.sum decoded
     -- Foldable.sum <| decoded.map (λ ln => ln.get! 1 |>.size)

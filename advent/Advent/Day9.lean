@@ -28,7 +28,7 @@ def Grid.dim (g : Grid) : Nat × Nat :=
 (g.size, g[0].size)
 
 def Grid.get' (g : Grid) (x y : Nat) : Nat :=
-let x := OptionM.run do
+let x := do
   guard (x >= 1)
   let ln ← g.get? (x - 1)
   guard (y >= 1)
