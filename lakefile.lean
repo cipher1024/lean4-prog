@@ -22,6 +22,9 @@ package sat (dir) (args) {
       { name := `advent
         src :=  Source.path "advent"
         args := args },
+      { name := `ConcreteSemantics
+        src :=  Source.path "concrete-semantics"
+        args := args },
       { name := `lean_tools
         src :=  Source.path "lean-tools"
         args := args } ] }

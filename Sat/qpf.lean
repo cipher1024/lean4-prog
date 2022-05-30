@@ -412,13 +412,13 @@ PFunctor.apply.mk x.a (f ⊚ x.b)
 protected def map_id {a : TypeVec n} : PFunctor.map P 𝟙 = @id (P.apply a) := by
   apply funext
   intros x; cases x using apply.casesOn
-  simp [PFunctor.map]; refl
+  simp [PFunctor.map]
 
 protected def map_comp {a b c : TypeVec n} (f : a ⟶ b) (g : b ⟶ c) :
   PFunctor.map P g ∘ PFunctor.map P f = PFunctor.map P (g ⊚ f) := by
   apply funext
   intros x; cases x using apply.casesOn
-  simp [PFunctor.map]; refl
+  simp [PFunctor.map]
 
 instance : IsFunctor P.apply where
   map := PFunctor.map P

@@ -2,6 +2,7 @@
 import Lib.Algebra.Monoid
 import Lib.Logic.Basic
 import Lib.Order.Basic
+import Lib.Meta.About
 import Lib.Tactic
 import Lib.Util
 
@@ -286,10 +287,14 @@ by rw [← neg_le_neg_iff]; simp
 
 theorem neg_add_le_cancel_l {x y z : α} :
   -x + y ≤ z ↔ y ≤ x + z :=
+let inst : Preorder (Additive α) := inferInstance
+  -- TODO: report breakage
+  -- this let should not be necessary
 inv_mul_le_cancel_l (α := Additive α)
 
 theorem neg_add_le_cancel_r {x y z : α} :
   x + -y ≤ z ↔ x ≤ z + y :=
+let inst : Preorder (Additive α) := inferInstance
 inv_mul_le_cancel_r (α := Additive α)
 
 end Preorder

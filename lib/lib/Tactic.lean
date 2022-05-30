@@ -312,8 +312,8 @@ macro_rules
 open Lean.Elab.Tactic
 open Lean
 
-syntax (name := auto) "auto" : attr
-syntax (name := eauto) "eauto" : attr
+-- syntax (name := auto) "auto" : attr
+-- syntax (name := eauto) "eauto" : attr
 
 abbrev AutoExtension := SimpleScopedEnvExtension Name NameSet
 
@@ -460,6 +460,14 @@ let bound := bound.getD 5
 SearchTacticM.focusAndDone $
 iterate bound <| Meta.tacAutoStep ns allowMVars
 
+def autoTac : TacticM Unit  := do
+Meta.tacAuto (← getAutoList) none |>.run
+
+def autoStepTac : TacticM Unit  := do
+Meta.tacAutoStep (← getAutoList) |>.run
+
+namespace Parser
+
 elab "destruct_hyp" : tactic => withMainContext Meta.destructHyp
 
 syntax "eauto" "[" ident,* "]" : tactic
@@ -506,6 +514,7 @@ elab "change" t:term "at" h:ident : tactic =>
 elab "apply_assumption" : tactic =>
   withMainContext (Meta.applyAssumption true).run
 
+end Parser
 
 -- macro "auto" : tactic =>
 --   `(tactic|

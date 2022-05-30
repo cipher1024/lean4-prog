@@ -26,11 +26,11 @@ constructor <;> intros h
 theorem not_exists (p : α → Prop) :
   ¬ (∃ x, p x) ↔ ∀ x, ¬ p x := by
 constructor <;> intros h
-focus
+next =>
   intros x Hp
   apply h; clear h
   exists x; assumption
-focus
+next =>
   intros h'
   cases h' with | intro y h' =>
   apply (h _ h')
@@ -39,13 +39,13 @@ focus
 theorem not_forall (p : α → Prop) :
   ¬ (∀ x, p x) ↔ ∃ x, ¬ p x := by
 constructor <;> intros h
-focus
+next =>
   apply byContradiction; intros h₀
   apply h; clear h; intro x
   apply byContradiction; intros h₁
   apply h₀; clear h₀
   exists x; assumption
-focus
+next =>
   intros h₀
   cases h with | intro x h =>
   apply h; clear h

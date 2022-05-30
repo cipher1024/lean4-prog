@@ -1,5 +1,6 @@
 
 import Lib.Data.Nat
+import Lib.Data.Fin
 import Lib.Data.List.Basic
 
 namespace Array
@@ -319,9 +320,9 @@ namespace Subarray
 
 def size (ar : Subarray α) : Nat := ar.stop - ar.start
 
-def get (ar : Subarray α) (i : Nat) (Hi : i < ar.size) : α :=
+def get (ar : Subarray α) (i : Fin ar.size) : α :=
 have : ar.start + i < Array.size ar.as := by
-  have := Nat.add_lt_of_lt_sub_l Hi
+  have := Nat.add_lt_of_lt_sub_l i.2
   apply Nat.lt_of_lt_of_le this ar.h₂
 ar.as.get ⟨ar.start + i, this⟩
 
@@ -380,7 +381,7 @@ constructor
 . apply Nat.le_max_l; simp [Nat.add_sub_of_le, *]
 
 theorem get_extract (ar : Subarray α) i p q h h' :
-  (ar.extract p q).get i h = ar.get (p + i) h' := by
+  (ar.extract p q).get ⟨i, h⟩ = ar.get ⟨p + i, h'⟩ := by
 simp [extract, get]
 -- have : min (ar.start + p) ar.stop + i = ar.start + (p + i) := sorry
 have : ∀ i j, i = j → ar.as.get i = ar.as.get j := by
@@ -461,7 +462,7 @@ macro_rules
 def takeWhileAux
             (p : α → Bool) (i : Nat) (ar : Subarray α) : Subarray α :=
 if h : i < ar.size then
-  if p $ ar.get i h then takeWhileAux p (Nat.succ i) ar
+  if p $ ar.get ⟨i, h⟩ then takeWhileAux p (Nat.succ i) ar
   else ar.extract 0 i
 else ar.extract 0 i
 termination_by takeWhileAux i ar  => ar.size - i
@@ -470,7 +471,7 @@ decreasing_by prove_decr
 theorem takeWhileAux_eq (p : α → Bool) (ar : Subarray α) :
   takeWhileAux p i ar =
   if h : i < ar.size then
-    if p $ ar.get i h then takeWhileAux p i.succ ar
+    if p $ ar.get ⟨i, h⟩ then takeWhileAux p i.succ ar
     else ar.extract 0 i
   else ar.extract 0 i :=
 WellFounded.fix_eq _ _ _
@@ -481,7 +482,7 @@ takeWhileAux p 0 ar
 def spanAux (p : α → Bool) (i : Nat)
     (ar : Subarray α) : Subarray α × Subarray α :=
 if h : i < ar.size then
-  if p $ ar.get i h then spanAux p (Nat.succ i) ar
+  if p $ ar.get ⟨i, h⟩ then spanAux p (Nat.succ i) ar
   else (ar.extract 0 i, ar.extract i ar.size)
 else (ar.extract 0 i, ar.extract i ar.size)
 termination_by spanAux i ar  => ar.size - i
@@ -490,7 +491,7 @@ decreasing_by prove_decr
 theorem spanAux_eq (p : α → Bool) (i : Nat) (ar : Subarray α) :
   spanAux p i ar =
   if h : i < ar.size then
-    if p $ ar.get i h then spanAux p (Nat.succ i) ar
+    if p $ ar.get ⟨i, h⟩ then spanAux p (Nat.succ i) ar
     else (ar.extract 0 i, ar.extract i ar.size)
   else (ar.extract 0 i, ar.extract i ar.size) :=
 WellFounded.fix_eq _ _ _
@@ -501,7 +502,7 @@ spanAux p 0 ar
 def dropWhile
             (p : α → Bool) (ar : Subarray α) : Subarray α :=
 if h : 0 < ar.size then
-  if p $ ar.get 0 h then dropWhile p ar.popFront
+  if p $ ar.get ⟨0, h⟩ then dropWhile p ar.popFront
   else ar
 else ar
 termination_by dropWhile ar => ar.size
@@ -510,7 +511,7 @@ decreasing_by prove_decr
 theorem dropWhile_eq (p : α → Bool) (ar : Subarray α) :
   dropWhile p ar =
   if h : 0 < ar.size then
-    if p $ ar.get 0 h then dropWhile p ar.popFront
+    if p $ ar.get ⟨0, h⟩ then dropWhile p ar.popFront
     else ar
   else ar :=
 WellFounded.fix_eq _ _ _
@@ -538,7 +539,7 @@ next ih =>
     have h₄ : ar.size ≤ ar.size := Nat.le_refl _
     have h : 0 < size (extract ar i (size ar)) :=
       by simp [size_extract, *]
-    have h₃ : get ar (i + 0) this = get ar i h₀ :=
+    have h₃ : get ar ⟨i + 0, this⟩ = get ar ⟨i, h₀⟩ :=
       by revert this; rw [Nat.add_zero]; intro; refl
     simp [get_extract (h' := this), h, h₃]
     split
@@ -582,7 +583,7 @@ theorem lt_size_toSubarray_implies_lt_size
 
 @[simp]
 theorem get_toSubarray  i j k h :
-  (ar.toSubarray i j).get k h =
+  (ar.toSubarray i j).get ⟨k, h⟩ =
   ar.get ⟨i + k, lt_size_toSubarray_implies_lt_size _ h⟩ :=
 sorry
 
@@ -684,10 +685,10 @@ namespace SubarrayOfSize
 
 def get {n α} (ar : SubarrayOfSize n α)
   (i : Fin n) : α :=
-ar.val.get i.1 <| ar.2.symm ▸ i.2
+ar.val.get <| i.cast ar.2.symm
 
 def toSubarray_idx (ar : Subarray α) : Fin ar.size → Fin ar.as.size
-| ⟨i, h⟩ => ⟨i, sorry⟩
+| ⟨i, h⟩ => ⟨i, Nat.lt_of_lt_of_le h <| by simp ⟩
 
 private def subarray_set (ar : Subarray α) (i : Fin ar.size)
             (x : α) : Subarray α where
@@ -785,7 +786,7 @@ sorry
 
 @[simp]
 theorem get_ofSubarray (ar : Subarray α) i h :
-  (ofSubarray ar).get ⟨i,h⟩ = ar.get i h :=
+  (ofSubarray ar).get ⟨i,h⟩ = ar.get ⟨i, h⟩ :=
 sorry
 
 def unshare : SubarrayQ α → SubarrayQ α
@@ -801,13 +802,13 @@ Quot.liftOn ar
       (by simp; apply ext <;> simp))
   (by simp [Util.withIsShared_if_false]
       intros a b h; apply ext <;> simp [a.2]
-      focus
+      next =>
         change (a.1.3 - a.1.2) with a.1.size
         change (b.1.3 - b.1.2) with b.1.size
         simp [Nat.min_eq_iff_le_r |>.2]
         simp [a.2, b.2]
         done
-      focus
+      next =>
         intros; apply h.apply
         rw [← a.2]
         simp at *

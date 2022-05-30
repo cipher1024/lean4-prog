@@ -5,6 +5,8 @@ import Lib.Data.Prod.Basic
 import Lib.Data.Profunctor
 import Lib.Data.Quot
 import Lib.Data.Traversable
+import Lib.Meta.About
+import Lib.Meta.Simps
 
 import Lib.Equiv
 import Lib.Tactic
@@ -162,11 +164,15 @@ instance : Functor (FoldImpl α) where
   map f x := { x with out := f ∘ x.out }
 
 @[simp]
-theorem x₀_map {α β γ} (x : FoldImpl α β) (f : β → γ) :
+theorem γ_map {α β γ} (x : FoldImpl.{u} α β) (f : β → γ) :
+  (f <$> x).γ = x.γ := rfl
+
+@[simp]
+theorem x₀_map {α β γ} (x : FoldImpl.{u} α β) (f : β → γ) :
   (f <$> x).x₀ = x.x₀ := rfl
 
 @[simp]
-theorem f_map {α β γ} (x : FoldImpl α β) (f : β → γ) :
+theorem f_map {α β γ} (x : FoldImpl.{u} α β) (f : β → γ) :
   (f <$> x).f = x.f := rfl
 
 @[simp]
@@ -204,15 +210,15 @@ theorem map_seq_eq_prod {α β γ} {f : α → β → γ} {x : FoldImpl.{u} ι �
 --   -- prod x (prod y z) = Prod.assoc.{u,u,u} <$> prod (prod x y) z := _
 
 @[simp]
-theorem x₀_seq {α β γ : Type _} (f : FoldImpl α (β → γ)) (x : FoldImpl α β) :
+theorem x₀_seq {α β γ : Type u} (f : FoldImpl α (β → γ)) (x : FoldImpl α β) :
   (f <*> x).x₀ = (f.x₀, x.x₀) := rfl
 
 @[simp]
-theorem f_seq {α β γ : Type _} (f : FoldImpl α (β → γ)) (x : FoldImpl α β) :
+theorem f_seq {α β γ : Type u} (f : FoldImpl α (β → γ)) (x : FoldImpl α β) :
   (f <*> x).f = (λ (a, b) i => (f.f a i, x.f b i)) := rfl
 
 @[simp]
-theorem out_seq {α β γ : Type _} (f : FoldImpl α (β → γ)) (x : FoldImpl α β) :
+theorem out_seq {α β γ : Type u} (f : FoldImpl α (β → γ)) (x : FoldImpl α β) :
   (f <*> x).out = (λ (i, j) => f.out i $ x.out j) := rfl
 
 
@@ -234,9 +240,9 @@ def Fold (α β : Type _) := Quot (@FoldImpl.R α β)
 
 namespace Fold
 
-variable {α α' β β'}
 
 section dimap
+variable {α α' β β'}
 variable (f : α' → α) (g : β → β')
 
 protected def dimap : Fold α β → Fold α' β' :=
@@ -378,7 +384,9 @@ end scanl
 def mk (x₀ : α) (f : α → β → α) : Fold β α :=
 Quot.mk _ $ FoldImpl.mk _ x₀ f id
 
-def map (f : α → β) (x : Fold σ α) : Fold σ β :=
+section instances
+
+def map (f : α → β) (x : Fold.{u} σ α) : Fold.{u} σ β :=
 x.liftOn (Quot.mk _ ∘ Functor.map f) $ by
   intros x y H; cases H; simp [FoldImpl.foldl]
   apply Quot.sound; simp [(.<$>.)]
@@ -477,13 +485,18 @@ def seq_mk_mk {α β : Type u} (f : FoldImpl σ (α → β)) (x : Unit → FoldI
   Quot.mk _ (Seq.seq f x) := by
 apply Quot.sound; refl
 
-instance : LawfulFunctor (Fold α) where
+instance : LawfulFunctor (Fold.{u} α) where
   id_map {α} := by intros x; cases x using Quot.ind; refl
   comp_map {α β γ} f g := by intros x; cases x using Quot.ind; refl
   map_const := by intros; apply funext; intros; refl
 
+section assoc
+variable {α β γ : Type u}
+
 inductive AssocSim : α × (β × γ) → (α × β) × γ → Prop
-| intro {x y z} : @AssocSim γ (x, (y, z)) ((x, y), z)
+| intro {x y z} : AssocSim (x, (y, z)) ((x, y), z)
+
+end assoc
 
 instance : LawfulApplicative (Fold α) where
   seq_assoc x f g:= by
@@ -531,10 +544,51 @@ instance : LawfulApplicative (Fold α) where
 
 attribute [simp] seq_mk_mk
 
+end instances
+
 def dup (x : α) : α × α := (x, x)
 
 inductive dup_sim : α → α × α → Prop
 | intros {x} : dup_sim x (x, x)
+-- #print dup_sim
+-- #print FoldImpl
+
+-- #check FoldImpl.R
+
+-- set_option about.print_instance_arguments true
+-- set_option pp.universes true
+-- #about Fold
+-- #fullname FoldImpl.f_seq
+-- #check @FoldImpl.f_map
+-- #check @FoldImpl.f_map
+
+-- theorem map_dup (x : Fold.{u} α β) : dup <$> x = ((., .) <$> x <*> x : Fold α (β × β)) := by
+-- cases x using Quot.ind; simp
+
+-- next b =>
+-- cases b with
+-- | mk γ x₀ f out =>
+--   apply Quot.sound
+--   apply FoldImpl.R.intro.{u} (SIM := dup_sim.{u})
+--  -- refine' ⟨, _, _, _⟩ <;> simp
+--   next => constructor
+--   next =>
+--     assume x : γ
+--     assume x' : γ × γ
+--     intros y a
+--     simp  [FoldImpl.f_map]
+--     -- rw [FoldImpl.f_map, FoldImpl.f_seq]
+
+-- next a =>
+--   simp;
+--   apply Fold.dup_sim.intros.{u} (x := a.x₀)
+--   constructor
+-- next a =>
+--   simp; intros _ _ _ h; cases h
+--   cases a; simp [Seq.seq]; constructor
+-- next a =>
+--   simp; intros _ _ h; cases h
+--   cases a; simp [Seq.seq]; constructor
 
 theorem map_dup (x : Fold α β) : dup <$> x = (., .) <$> x <*> x := by
 cases x using Quot.ind; simp
